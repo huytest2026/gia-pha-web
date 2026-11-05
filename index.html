@@ -1225,7 +1225,7 @@
     callApi('reactivateThanhVien', {id: id}).then(() => { showPage('members'); loadMembers(); initTreeMemberCache(); });
   }
 
-  // --- CỘT MỐC CÂY GIA PHẢ ---
+  // --- CÂY GIA PHẢ ĐẦY ĐỦ ---
   function showTreeNotice(message, type) {
     const el = document.getElementById('treeNotice');
     if (!el) return;
@@ -1329,16 +1329,17 @@
       return;
     }
     content.innerHTML = '<div class="info-card"><h3>🌳 Cây gia phả đã tải thành công</h3><p>Tổng số thành viên trong nhánh: ' + nodes.length + '</p></div>' +
-      '<div class="tree-person-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px;">' +
+      '<div class="tree-person-grid">' +
       nodes.map(p => '<div class="tree-person"><div class="tree-person-name">👤 ' + escapeHtml(p.HO_TEN || p.name) + '</div></div>').join('') +
       '</div>';
   }
 
-  // Khởi tạo các phân hệ phụ khác
+  // Khởi tạo các phân hệ phụ (Quan hệ gia đình, Ngày giỗ)
   function loadAllFamilyRelations() {}
   function loadAnniversaries() {}
   function loadAnniversaryMembers() {}
 
+  // --- BẢN ĐỒ SỐ MỘ ---
   function loadGraveyardList() {
     const content = document.getElementById('graveyardContent');
     if (!content) return;
