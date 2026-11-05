@@ -937,7 +937,7 @@ window.addEventListener('message', function (event) {
   if (!bridgeFrame) return;
 
   // Chi nhan thong diep tu iframe Bridge
-  if (event.source !== bridgeFrame.contentWindow) return;
+  if (event.origin !== new URL(BRIDGE_URL).origin) return;
 
   const msg = event.data;
 
