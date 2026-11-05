@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản lý gia phả dòng họ</title>
+  <style>
+    :root {
+      --primary: #245c45;
+      --primary-dark: #194531;
+      --gold: #bd9853;
+      --bg: #f4f6f3;
+      --border: #e2e8e2;
+      --text: #25352c;
+      --muted: #718078;
+      --danger: #a52d27;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--text); }
+    .header {
+      background: var(--primary); color: white; padding: 22px 30px;
+      display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;
+    }
+    .header h1 { margin: 0; font-size: 23px; }
+    .header p { margin: 7px 0 0; color: #d7e5dc; font-size: 13px; }
+    .container { max-width: 1320px; margin: 28px auto; padding: 0 18px; }
+    .welcome {
+      background: white; border-radius: 12px; padding: 25px; margin-bottom: 22px;
+      border-left: 5px solid var(--gold); box-shadow: 0 2px 10px #00000008;
+    }
+    .welcome h2 { margin: 0 0 8px; color: var(--primary); font-size: 22px; }
+    .welcome p { margin: 0; color: var(--muted); line-height: 1.6; }
+    .layout { display: grid; grid-template-columns: 245px minmax(0, 1fr); gap: 20px; align-items: start; }
+    .sidebar, .main-panel { background: white; border-radius: 12px; box-shadow: 0 2px 10px #00000008; }
+    .sidebar { padding: 15px; }
+    .nav-item {
+      width: 100%; padding: 13px 14px; border: 0; background: transparent; text-align: left;
+      border-radius: 8px; cursor: pointer; color: var(--text); font-size: 14px; margin-bottom: 5px;
+    }
+    .nav-item.active { background: #eaf2ed; color: var(--primary); font-weight: bold; }
+    .nav-item:hover { background: #f1f5f2; }
+    .main-panel { padding: 25px; min-height: 500px; min-width: 0; }
+    .panel-heading {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+      border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 22px;
+    }
+    .panel-heading h2 { margin: 0; color: var(--primary); font-size: 20px; }
+    .btn {
+      padding: 10px 14px; border: 0; border-radius: 7px; cursor: pointer;
+      font-weight: bold; font-size: 13px; line-height: 1.25;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: #edf0ed; color: #405047; }
+    .btn-danger { background: #fff0ef; color: var(--danger); }
+    .btn-small { padding: 7px 9px; font-size: 12px; margin: 2px; }
+    .btn:disabled { opacity: .55; cursor: wait; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .form-group { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+    .form-group.full, .section-title { grid-column: 1 / -1; }
+    label { font-size: 13px; font-weight: bold; color: #425349; }
+    input, textarea, select {
+      width: 100%; padding: 11px 12px; border: 1px solid #dce4dd; border-radius: 7px;
+      font-size: 14px; outline: none; font-family: inherit; background: white; color: var(--text);
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px #245c4515; }
+    textarea { min-height: 95px; resize: vertical; }
+    .section-title {
+      color: var(--primary); font-size: 15px; font-weight: bold; border-bottom: 1px solid var(--border);
+      padding-bottom: 9px; margin-top: 8px;
+    }
+    .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; flex-wrap: wrap; }
+    .info-card { border: 1px solid var(--border); border-radius: 10px; padding: 22px; margin-bottom: 15px; }
+    .info-card h3 { color: var(--primary); margin: 0 0 15px; }
+    .info-row {
+      display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid #edf0ed; font-size: 14px; line-height: 1.5;
+    }
+    .info-label { color: var(--muted); }
+    .info-value { font-weight: 500; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .status {
+      display: inline-block; background: #e5f4e9; color: #267442; padding: 5px 10px;
+      border-radius: 20px; font-size: 12px; font-weight: bold; white-space: nowrap;
+    }
+    .status.inactive { background: #fff0ef; color: #a52d27; }
+    .empty { text-align: center; padding: 55px 15px; color: var(--muted); }
+    .empty-icon { font-size: 45px; margin-bottom: 15px; }
+    .empty h3 { color: var(--primary); margin-bottom: 8px; }
+    .notice { padding: 12px 15px; border-radius: 8px; margin-bottom: 18px; font-size: 13px; display: none; line-height: 1.5; }
+    .notice.success { display: block; background: #e8f5eb; color: #23653a; }
+    .notice.error { display: block; background: #fff0ef; color: #a52d27; }
+    .notice.info { display: block; background: #eef4f0; color: var(--primary); }
+    .loading { color: var(--muted); padding: 35px; text-align: center; }
+    .filters { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(140px, 1fr) minmax(160px, 1fr) auto; gap: 10px; margin-bottom: 16px; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 9px; }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; font-size: 13px; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #edf0ed; vertical-align: middle; }
+    th { background: #f4f7f4; color: #425349; font-size: 12px; white-space: nowrap; }
+    tbody tr:hover { background: #fafcf9; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .person-name { font-weight: bold; color: var(--primary); }
+    .muted { color: var(--muted); }
+    .list-summary { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0; color: var(--muted); font-size: 12px; }
+    .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 25px; }
+    .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+    .avatar-placeholder { width: 74px; height: 74px; border-radius: 50%; background: #eaf2ed; display: flex; align-items: center; justify-content: center; font-size: 30px; overflow: hidden; }
+    .avatar-placeholder img { width: 100%; height: 100%; object-fit: cover; }
+    .person-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .person-header h3 { margin: 0 0 6px; color: var(--primary); }
+    .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    @media(max-width: 900px) {
+      .filters { grid-template-columns: 1fr 1fr; }
+    }
+    @media(max-width: 760px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: flex; overflow-x: auto; gap: 5px; }
+      .nav-item { white-space: nowrap; width: auto; }
+      .form-grid, .filters { grid-template-columns: 1fr; }
+      .form-group.full, .section-title { grid-column: 1; }
+      .main-panel { padding: 17px; }
+      .info-row { grid-template-columns: 1fr; gap: 4px; }
+      .header { padding: 20px; }
+    }
+
+    /* ================= CAY GIA PHA ================= */
+    .tree-toolbar {
+      display: grid;
+      grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) auto;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .tree-summary { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+    .tree-stat {
+      flex: 1; min-width: 120px; padding: 13px; background: #f4f7f4;
+      border: 1px solid var(--border); border-radius: 9px;
+    }
+    .tree-stat strong { display: block; color: var(--primary); font-size: 21px; margin-bottom: 4px; }
+    .tree-stat span { color: var(--muted); font-size: 12px; }
+    .tree-generation {
+      margin: 22px 0; padding: 16px; border: 1px solid var(--border);
+      border-radius: 12px; background: #fbfcfa;
+    }
+    .tree-generation-title {
+      font-weight: bold; color: var(--primary); margin-bottom: 14px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    }
+    .tree-person-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 13px;
+    }
+    .tree-person {
+      background: white; border: 1px solid #dce6dd; border-radius: 10px;
+      padding: 14px; min-width: 0; box-shadow: 0 2px 6px #00000008;
+    }
+    .tree-person.root { border: 2px solid var(--gold); background: #fffdf7; }
+    .tree-person-name {
+      font-size: 14px; font-weight: bold; color: var(--primary);
+      margin-bottom: 7px; overflow-wrap: anywhere;
+    }
+    .tree-person-meta { font-size: 12px; color: var(--muted); line-height: 1.7; overflow-wrap: anywhere; }
+    .tree-person-actions { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 12px; }
+    .tree-person-actions button { font-size: 11px; padding: 6px 8px; }
+    .tree-relationship { margin-top: 18px; border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .tree-relationship h3 { color: var(--primary); font-size: 15px; margin: 0 0 12px; }
+    .tree-link-item { padding: 10px; border-bottom: 1px solid #edf0ed; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+    .tree-link-item:last-child { border-bottom: 0; }
+    .tree-link-arrow { color: var(--gold); font-weight: bold; padding: 0 5px; }
+    .tree-root-label {
+      display: inline-block; background: #f8f0df; color: #886626; padding: 3px 8px;
+      border-radius: 20px; font-size: 10px; font-weight: bold; margin-left: 5px;
+    }
+    .tree-inactive { color: #a52d27; font-size: 11px; }
+
+    .tree-family-root {
+      display: flex; flex-direction: column; align-items: center; margin: 24px 0 30px;
+    }
+    .tree-family-root-title { color: var(--primary); font-weight: bold; margin-bottom: 14px; font-size: 15px; }
+    .tree-couple { display: flex; justify-content: center; align-items: stretch; flex-wrap: wrap; gap: 18px; position: relative; width: 100%; }
+    .tree-couple-person { width: min(100%, 310px); position: relative; }
+    .tree-couple-person.spouse::before { content: "💍"; position: absolute; z-index: 2; left: -24px; top: 45%; font-size: 20px; }
+    .tree-couple-person.spouse .tree-person { border: 2px solid #d9c18f; background: #fffdf8; }
+    .tree-couple-caption { color: #886626; font-size: 12px; font-weight: bold; text-align: center; margin-top: 8px; }
+    .tree-family-connector { width: 2px; height: 28px; background: #bd9853; margin: 0 auto; }
+    .tree-children-connector { width: min(80%, 650px); height: 18px; border-top: 2px solid #bd9853; border-left: 2px solid #bd9853; border-right: 2px solid #bd9853; margin: 0 auto; }
+    .tree-generation-descendants { margin-top: 0; }
+    .tree-generation-descendants .tree-generation-title { text-align: center; }
+
+    @media(max-width:600px) {
+      .tree-couple { flex-direction: column; align-items: center; }
+      .tree-couple-person.spouse::before { left: 50%; top: -25px; transform: translateX(-50%); }
+      .tree-children-connector { width: 90%; }
+    }
+    @media(max-width:760px) { .tree-toolbar { grid-template-columns: 1fr; } }
+
+    .tree-spouse-generation { border: 1px dashed #d9c18f; background: #fffdf8; }
+    .tree-spouse-generation .tree-generation-title { color: #886626; }
+
+    .tree-family-tree-stage { display:block; overflow:auto; text-align:center; padding:24px 24px 30px; }
+    .tree-family-tree, .tree-family-children { list-style:none; margin:0 auto; padding:18px 0 0; position:relative; display:flex; justify-content:center; align-items:flex-start; gap:18px; width:max-content; min-width:100%; }
+    .tree-family-tree { padding-top:0; }
+    .tree-family-tree.tree-family-tree-primary { width:max-content; min-width:100%; margin-left:auto; margin-right:auto; }
+    .tree-family-tree-primary > .tree-family-node > .tree-family-person-wrap { margin-left:auto; margin-right:auto; }
+    .tree-family-node { list-style:none; position:relative; text-align:center; padding:18px 8px 0; }
+    .tree-family-tree > .tree-family-node { padding-top:0; }
+    .tree-family-children > .tree-family-node:before { content:""; position:absolute; top:0; left:0; right:0; border-top:2px solid #bd9853; }
+    .tree-family-children > .tree-family-node:first-child:before { left:50%; }
+    .tree-family-children > .tree-family-node:last-child:before { right:50%; }
+    .tree-family-children > .tree-family-node:only-child:before { display:none; }
+    .tree-family-node:after { content:""; position:absolute; top:0; left:50%; height:18px; border-left:2px solid #bd9853; }
+    .tree-family-tree > .tree-family-node:after { display:none; }
+    .tree-family-person-wrap { width:290px; max-width:calc(100vw - 90px); position:relative; z-index:1; }
+    .tree-family-person-main .tree-person { height:100%; text-align:left; }
+    .tree-family-spouses { display:flex; flex-direction:column; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed #d9c18f; }
+    .tree-family-spouse { width:100%; }
+    .tree-family-spouse .tree-person { border:2px solid #d9c18f; background:#fffdf8; text-align:left; }
+    .tree-family-disconnected { margin-top:22px; padding-top:14px; border-top:1px dashed var(--border); }
+    @media(max-width:600px) {
+      .tree-family-tree, .tree-family-children { justify-content:flex-start; }
+      .tree-family-person-wrap { width:250px; }
+    }
+
+    .tree-view-toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
+    .tree-chart-note { padding:10px 13px; background:#f5f8f5; border-left:3px solid #bd9853; color:#65736a; font-size:12px; margin:10px 0 16px; }
+    .tree-chart-stage { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:18px; align-items:start; padding:18px; background:#f6f8f5; border:1px solid var(--border); border-radius:12px; overflow:auto; }
+    .tree-family-card { min-width:0; background:#fff; border:1px solid #dce6dd; border-radius:13px; padding:14px; box-shadow:0 3px 12px #1b47300b; text-align:center; }
+    .tree-family-label { font-size:10px; font-weight:800; letter-spacing:1px; color:#a17d3c; margin-bottom:10px; }
+    .tree-chart-parents { display:flex; align-items:stretch; justify-content:center; gap:8px; flex-wrap:wrap; }
+    .tree-chart-parent { flex:1 1 230px; min-width:0; max-width:360px; position:relative; }
+    .tree-chart-generation { margin:14px 0; }
+    .tree-generation-people { display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start; gap:14px; }
+    .tree-generation-person { flex:1 1 280px; min-width:260px; max-width:430px; padding:10px; border:1px solid #dce6dd; border-radius:12px; background:#fff; }
+    .tree-generation-spouses { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed #c8d8cb; }
+    .tree-chart-spouse { flex:1 1 220px; max-width:360px; }
+    .tree-spouse-caption { font-size:11px; color:#7b6742; margin:0 0 5px; }
+
+    .tree-chart-parent .tree-person, .tree-chart-child .tree-person { height:100%; text-align:left; }
+    .tree-chart-marriage { display:inline-block; margin:8px auto 0; padding:5px 12px; border-radius:20px; color:#886626; background:#fbf5e8; border:1px solid #ead9b5; font-size:11px; }
+    .tree-chart-stem { width:2px; height:18px; margin:0 auto; background:#bd9853; }
+    .tree-chart-children-line { height:12px; width:80%; margin:0 auto; border-top:2px solid #bd9853; border-left:2px solid #bd9853; border-right:2px solid #bd9853; }
+    .tree-chart-children { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:9px; }
+    .tree-chart-child { min-width:0; position:relative; }
+    .tree-chart-child:before { content:""; display:block; width:2px; height:10px; background:#bd9853; margin:-10px auto 0; }
+    .tree-collapse-btn { margin-top:12px; }
+    .tree-family-single { max-width:420px; margin:0 auto; }
+    @media(max-width:600px) {
+      .tree-chart-stage { grid-template-columns:minmax(280px,1fr); padding:9px; }
+      .tree-chart-parents { flex-direction:column; align-items:center; }
+      .tree-chart-parent { width:100%; max-width:none; }
+      .tree-chart-children { grid-template-columns:1fr; }
+    }
+
+    .tree-person { padding:6px 8px; border-radius:7px; box-shadow:0 1px 4px #00000008; }
+    .tree-person-name { font-size:12px; line-height:1.3; margin-bottom:3px; }
+    .tree-person-meta-compact { font-size:10px; line-height:1.35; }
+    .tree-person-meta-extra { display:none; font-size:10px; line-height:1.4; margin-top:4px; }
+    .tree-person-actions { gap:4px; margin-top:6px; }
+    .tree-person-actions button { font-size:10px; padding:4px 6px; }
+    .tree-family-tree-stage { padding:18px 22px 26px; }
+    .tree-family-person-wrap { width:190px; max-width:calc(100vw - 60px); }
+    .tree-family-node { padding:12px 4px 0; }
+    .tree-family-children { gap:8px; padding-top:12px; }
+    .tree-family-spouses { gap:5px; margin-top:5px; padding-top:5px; }
+    .tree-family-spouse .tree-person { padding:7px 8px; }
+    .tree-zoom-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin:10px 0; }
+    .tree-zoom-toolbar .btn { padding:7px 11px; }
+    .tree-pdf-help { font-size:11px; color:var(--muted); margin:4px 0 8px; }
+    .tree-zoom-label { min-width:48px; font-size:12px; color:var(--muted); font-weight:bold; text-align:center; }
+    .tree-chart-viewport { width:100%; height:min(72vh,780px); min-height:420px; overflow:auto; position:relative; border:1px solid var(--border); border-radius:10px; background-color:#f7f9f6; background-image:radial-gradient(#dce5dc 0.7px,transparent 0.7px); background-size:16px 16px; cursor:grab; }
+    .tree-chart-viewport.is-dragging { cursor:grabbing; user-select:none; }
+    .tree-chart-canvas { width:max-content; min-width:100%; transform-origin:top left; padding:10px; }
+    .tree-chart-stage { width:max-content; min-width:100%; display:block; overflow:visible; background:transparent; border:0; padding:8px 18px 24px; }
+    .tree-branch-toggle { position:absolute; z-index:4; right:-7px; top:3px; width:22px; height:22px; border:1px solid #bd9853; border-radius:50%; background:#fffaf0; color:#805d20; font-weight:bold; line-height:18px; cursor:pointer; box-shadow:0 1px 4px #0002; }
+    .tree-family-node.is-collapsed > .tree-family-children { display:none; }
+    .tree-family-node.is-collapsed > .tree-family-person-wrap .tree-branch-toggle { background:#245c45; color:#fff; border-color:#245c45; }
+    @media(max-width:600px) {
+      .tree-chart-viewport { height:65vh; min-height:360px; }
+      .tree-family-person-wrap { width:185px; }
+      .tree-family-node { padding-left:3px; padding-right:3px; }
+    }
+
+    .tree-family-node { display: flex; flex-direction: column; align-items: center; }
+    .tree-family-tree > .tree-family-node { align-items: center; }
+    .tree-family-children { width: max-content; min-width: 0; max-width: none; justify-content: center; align-self: center; margin-left: auto; margin-right: auto; flex: 0 0 auto; }
+    .tree-family-children > .tree-family-node { flex: 0 0 auto; }
+    @media(max-width:600px) { .tree-family-children { justify-content: flex-start; } }
+
+    .tree-pdf-dialog { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; padding:18px; background:#14251dcc; }
+    .tree-pdf-dialog-card { width:min(540px,100%); max-height:90vh; overflow:auto; background:#fff; border-radius:14px; padding:20px; box-shadow:0 18px 60px #0004; }
+    .tree-pdf-dialog-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .tree-pdf-dialog-head h3 { margin:0; color:#245c45; }
+    .tree-pdf-dialog-card label { display:block; font-weight:700; margin:12px 0 5px; font-size:13px; }
+    .tree-pdf-dialog-card .form-control { width:100%; min-height:38px; border:1px solid #cbd8ce; border-radius:7px; padding:7px 9px; background:#fff; }
+    .tree-pdf-options { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .tree-pdf-dialog-hint { background:#f3f7f3; border-left:3px solid #bd9853; padding:9px 11px; font-size:12px; color:#52645a; margin-top:14px; }
+    .tree-pdf-dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+    #treePdfPrintArea { display:none; }
+    #treePdfPrintArea .tree-pdf-print-title { text-align:center; margin:0 0 5mm; color:#245c45; font-size:18pt; }
+    #treePdfPrintArea .tree-pdf-print-subtitle { text-align:center; margin:0 0 6mm; color:#59665d; font-size:9pt; }
+    #treePdfPrintArea .tree-family-tree-stage { overflow:visible; }
+    #treePdfPrintArea .tree-family-node { break-inside:avoid; }
+
+    @media print {
+      @page { size: A3 landscape; margin: 10mm; }
+      html, body { width:auto !important; height:auto !important; overflow:visible !important; background:#fff !important; }
+      body * { visibility:hidden !important; }
+      #page-tree, #page-tree * { visibility:visible !important; }
+      header.header, .sidebar, .welcome, .nav-item, #notice { display:none !important; }
+      .container, .layout, .main-panel { display:block !important; width:100% !important; max-width:none !important; margin:0 !important; padding:0 !important; border:0 !important; box-shadow:none !important; }
+      #page-tree { display:block !important; width:100% !important; margin:0 !important; padding:0 !important; }
+      #page-tree > .panel-heading, #page-tree > .tree-toolbar, #page-tree > #treeNotice { display:none !important; }
+      #treeChartView { display:block !important; }
+      #treeListView { display:none !important; }
+      #treeContent > .info-card, #treeContent > .tree-summary { display:none !important; }
+      .tree-view-toolbar, .tree-zoom-toolbar, .tree-chart-note, .tree-pdf-help { display:none !important; }
+      #treeChartViewport { height:auto !important; min-height:0 !important; max-height:none !important; overflow:visible !important; border:0 !important; border-radius:0 !important; background:#fff !important; background-image:none !important; }
+      #treeChartCanvas { width:max-content !important; min-width:0 !important; transform:none !important; padding:0 !important; }
+      .tree-family-tree-stage, .tree-chart-stage { width:max-content !important; min-width:0 !important; padding:4mm !important; background:#fff !important; }
+      .tree-family-person-wrap { width:44mm !important; max-width:none !important; }
+      .tree-person { break-inside:avoid; box-shadow:none !important; border:0.25mm solid #b9c9bd !important; }
+      .tree-branch-toggle { display:none !important; }
+      .tree-family-node, .tree-family-children, .tree-family-disconnected { break-inside:avoid; }
+      .tree-family-disconnected { page-break-before:always; }
+      * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    }
+
+    :root { --primary:#315b45; --primary-dark:#234633; --gold:#b58a43; --bg:#f7f5ec; --border:#e5dcc8; }
+    body { background:#f7f5ec; }
+    .header { background:linear-gradient(115deg,#234633,#376b4d 55%,#234633); border-bottom:4px solid #b58a43; }
+    .welcome { border-left-color:#b58a43; background:linear-gradient(110deg,#fffdf6,#fff); }
+    .sidebar,.main-panel { border:1px solid #e8dfce; }
+    .tree-chart-viewport { background-color:#fbfaf4 !important; background-image:radial-gradient(#e6ddca .75px,transparent .75px) !important; background-size:18px 18px !important; border:1px solid #d9c69f !important; box-shadow:inset 0 0 0 5px #fffdf7,inset 0 0 0 6px #e5d5b5; }
+    .tree-chart-canvas { padding:28px 32px 38px !important; }
+    .tree-chart-stage { padding:12px 28px 30px !important; }
+    .tree-family-tree { gap:22px !important; padding-top:22px !important; }
+    .tree-family-node { padding:16px 8px 0 !important; }
+    .tree-family-person-wrap { width:max-content !important; max-width:none !important; display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:center !important; gap:8px !important; }
+    .tree-family-person-main { width:190px; flex:0 0 190px; }
+    .tree-family-spouses { display:flex !important; flex-direction:row !important; align-items:center !important; gap:8px !important; margin:0 !important; padding:0 0 0 8px !important; border:0 !important; border-left:1px dashed #c9a96d !important; }
+    .tree-family-spouse { width:190px; flex:0 0 190px; }
+    .tree-family-spouse .tree-person { border:1.5px solid #c9a96d !important; background:#fffaf0 !important; }
+    .tree-spouse-caption { font-size:10px !important; font-weight:700; color:#87662e !important; text-align:center; margin:0 0 4px !important; }
+    .tree-person { min-height:74px; padding:9px 10px !important; border:1px solid #cbd8cb !important; border-radius:9px !important; background:#fffefb !important; box-shadow:0 2px 7px #513b1710 !important; }
+    .tree-person.root { border:2px solid #b58a43 !important; background:#fff8e8 !important; }
+    .tree-person-name { font-size:12px !important; color:#2d563f !important; }
+    .tree-person-meta-compact { font-size:10px !important; color:#6f796f !important; }
+    .tree-person-actions button { background
