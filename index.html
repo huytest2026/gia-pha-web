@@ -990,11 +990,13 @@ function sendBridgeRequest(item) {
 
   try {
 
-    bridgeFrame.contentWindow.postMessage({
-      type: 'GIA_PHA_API_REQUEST',
-      requestId: requestId,
-      payload: item.payload
-    }, '*');
+    console.log('[GITHUB] Gui yeu cau:', item.payload.action);
+
+bridgeFrame.contentWindow.postMessage({
+  type: 'GIA_PHA_API_REQUEST',
+  requestId: requestId,
+  payload: item.payload
+}, 'https://script.google.com');
 
   } catch (error) {
 
