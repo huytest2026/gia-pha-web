@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quản lý gia phả dòng họ</title>
+  <!-- Thư viện Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
       --primary: #245c45;
@@ -408,6 +411,7 @@
       <button class="nav-item" data-page="tree" onclick="showPage('tree', this)">🌳 Cây gia phả</button>
       <button class="nav-item" data-page="relations" onclick="showPage('relations', this)">👨‍👩‍👧‍👦 Quan hệ gia đình</button>
       <button class="nav-item" data-page="anniversaries" onclick="showPage('anniversaries', this)">🕯️ Ngày giỗ & nhắc lịch</button>
+      <button class="nav-item" data-page="graveyard" onclick="showPage('graveyard', this)">🗺️ Bản đồ số mộ</button>
     </aside>
 
     <main class="main-panel">
@@ -769,6 +773,113 @@
           <div id="marriagesContent"><div class="loading">Đang tải danh sách hôn nhân...</div></div>
         </div>
       </section>
+
+      <!-- BẢN ĐỒ SỐ MỘ -->
+      <section id="page-graveyard" style="display:none">
+        <div class="panel-heading">
+          <div>
+            <h2>🗺️ Bản đồ số mộ & Vị trí phần mộ</h2>
+            <div class="hint" style="margin-top:6px">Quản lý tọa độ GPS, xem bản đồ nghĩa trang và chỉ đường đến phần mộ.</div>
+          </div>
+          <button class="btn btn-primary" onclick="openNewGraveyardForm()">＋ Thêm phần mộ</button>
+        </div>
+
+        <div class="filters">
+          <input id="graveSearch" type="search" placeholder="Tìm tên người mất, khu mộ, vị trí..." onkeydown="if(event.key==='Enter'){event.preventDefault();loadGraveyardList();}">
+          <select id="graveStatusFilter" onchange="loadGraveyardList()">
+            <option value="DANG_HOAT_DONG">Đang theo dõi</option>
+            <option value="">Tất cả trạng thái</option>
+            <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+          </select>
+          <button class="btn btn-secondary" onclick="loadGraveyardList()">🔎 Tìm kiếm</button>
+        </div>
+
+        <div id="graveNotice" class="notice" role="status" aria-live="polite"></div>
+
+        <!-- Bản đồ hiển thị tổng quan -->
+        <div class="info-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="margin:0">📍 Sơ đồ vị trí các phần mộ</h3>
+            <button class="btn btn-secondary btn-small" onclick="initGraveyardMap()">↻ Tải lại bản đồ</button>
+          </div>
+          <div id="graveyardMap" style="width:100%; height:450px; border-radius:8px; border:1px solid #dce4dd; z-index:1;"></div>
+        </div>
+
+        <!-- Danh sách phần mộ -->
+        <div class="panel-heading"><h2 style="font-size:17px">Danh sách phần mộ</h2></div>
+        <div id="graveyardContent"><div class="loading">Đang tải danh sách phần mộ...</div></div>
+      </section>
+
+      <!-- BIỂU MẪU THÊM/SỬA PHẦN MỘ -->
+      <section id="page-graveyard-form" style="display:none">
+        <div class="panel-heading">
+          <h2 id="graveFormTitle">Thêm phần mộ mới</h2>
+          <button class="btn btn-secondary" onclick="showPage('graveyard')">← Quay lại bản đồ</button>
+        </div>
+        <form id="graveyardForm" onsubmit="saveGraveyardForm(event)">
+          <input type="hidden" name="ID_PHANMO">
+          <div class="form-grid">
+            <div class="section-title">I. LIÊN KẾT THÀNH VIÊN</div>
+            <div class="form-group full">
+              <label>Thành viên đã mất *</label>
+              <select name="ID_THANHVIEN" id="graveMemberSelect" required><option value="">-- Chọn thành viên --</option></select>
+            </div>
+
+            <div class="section-title">II. THÔNG TIN KHU MỘ & VỊ TRÍ</div>
+            <div class="form-group">
+              <label>Tên nghĩa trang / Khu mộ *</label>
+              <input name="TEN_KHU_MO" required placeholder="Ví dụ: Nghĩa trang dòng họ Nguyễn, Xã...">
+            </div>
+            <div class="form-group">
+              <label>Khu, hàng, lô mộ</label>
+              <input name="KHU_VUC" placeholder="Ví dụ: Khu A, Hàng 3, Lô 12">
+            </div>
+            <div class="form-group full">
+              <label>Địa chỉ khu mộ</label>
+              <input name="DIA_CHI" placeholder="Thôn, xã, huyện, tỉnh">
+            </div>
+            <div class="form-group full">
+              <label>Mô tả vị trí chi tiết</label>
+              <textarea name="VI_TRI_MO" placeholder="Mô tả hướng đi, đặc điểm nhận dạng ngôi mộ..."></textarea>
+            </div>
+
+            <div class="section-title">III. TỌA ĐỘ GPS & BẢN ĐỒ</div>
+            <div class="form-group full">
+              <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary" onclick="getCurrentLocationGPS()">📍 Lấy GPS tự động (Điện thoại)</button>
+                <span class="hint" style="align-self:center;">Hoặc bấm trực tiếp lên bản đồ bên dưới để chọn vị trí mộ.</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Vĩ độ (Latitude) *</label>
+              <input name="LATITUDE" id="graveLat" required placeholder="Ví dụ: 21.0285">
+            </div>
+            <div class="form-group">
+              <label>Kinh độ (Longitude) *</label>
+              <input name="LONGITUDE" id="graveLng" required placeholder="Ví dụ: 105.8542">
+            </div>
+            <div class="form-group full">
+              <label>Chọn vị trí trên bản đồ (Nhấn vào bản đồ để ghim tọa độ)</label>
+              <div id="pickerMap" style="width:100%; height:320px; border-radius:8px; border:1px solid #dce4dd;"></div>
+            </div>
+
+            <div class="section-title">IV. THÔNG TIN BỔ SUNG</div>
+            <div class="form-group full">
+              <label>Hình ảnh phần mộ (URL)</label>
+              <input name="HINH_ANH" type="url" placeholder="https://...">
+            </div>
+            <div class="form-group full">
+              <label>Ghi chú</label>
+              <textarea name="GHI_CHU" placeholder="Thông tin tu sửa, người quản lý mộ..."></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="showPage('graveyard')">Hủy</button>
+            <button type="submit" class="btn btn-primary" id="saveGraveButton">💾 Lưu phần mộ</button>
+          </div>
+        </form>
+      </section>
+
     </main>
   </div>
 </div>
@@ -778,7 +889,6 @@
   // Cấu hình URL Web App Google Apps Script của bạn
   const API_URL = "https://script.google.com/macros/s/AKfycbwxTisTYK5nuu-_fvIWd7RdBBHjYbGeyf8JvqAnwYw9WG82nJc7xkiWABnCcSaJHG_4Og/exec";
 
-  // Hàm gọi API chung (thay thế cho google.script.run)
   function callApi(action, payload = {}) {
     return fetch(API_URL, {
       method: "POST",
@@ -804,7 +914,12 @@
   let currentTreeViewMode = 'list';
   let currentTreeRootId = '';
 
-  const PAGE_IDS = ['overview', 'form', 'members', 'member-form', 'member-detail', 'tree', 'relations', 'anniversaries'];
+  let graveyardMapInstance = null;
+  let pickerMapInstance = null;
+  let pickerMarker = null;
+  let allGravesCache = [];
+
+  const PAGE_IDS = ['overview', 'form', 'members', 'member-form', 'member-detail', 'tree', 'relations', 'anniversaries', 'graveyard', 'graveyard-form'];
 
   function treePersonId(person) {
     if (!person) return '';
@@ -836,7 +951,8 @@
       item.classList.toggle(
         'active',
         item.dataset.page === page ||
-        ((page === 'member-form' || page === 'member-detail') && item.dataset.page === 'members')
+        ((page === 'member-form' || page === 'member-detail') && item.dataset.page === 'members') ||
+        ((page === 'graveyard-form') && item.dataset.page === 'graveyard')
       );
     });
 
@@ -849,15 +965,20 @@
       loadAnniversaryMembers();
       loadAnniversaries();
     }
+    if (page === 'graveyard') {
+      loadGraveyardList();
+    }
   }
 
   function showNotice(message, type) {
     const el = document.getElementById('notice');
+    if (!el) return;
     el.className = 'notice ' + (type || 'info');
     el.textContent = message || '';
   }
   function hideNotice() {
     const el = document.getElementById('notice');
+    if (!el) return;
     el.className = 'notice';
     el.textContent = '';
   }
@@ -1906,12 +2027,14 @@
 
   function showRelationNotice(message, type) {
     const el = document.getElementById('relationNotice');
+    if (!el) return;
     el.className = 'notice ' + (type || 'info');
     el.textContent = message || '';
   }
 
   function hideRelationNotice() {
     const el = document.getElementById('relationNotice');
+    if (!el) return;
     el.className = 'notice';
     el.textContent = '';
   }
@@ -2464,7 +2587,7 @@
         var selected = annivCalSelectedDate === dateKey;
 
         html += '<button type="button" class="anniv-day' + (hasEvent ? ' has-event' : '') + (selected ? ' selected' : '') + '"' +
-          (hasEvent ? ' onclick="annivCalShowDetail(\'' + dateKey + '\')"' : ' disabled') + '>';
+          (hasEvent ? ' onclick="annivCalShowDetail(\'' + dateKey + \')"' : ' disabled') + '>';
         html += day;
         if (hasEvent) {
           html += '<span class="anniv-day-count">🕯️' + (count > 1 ? ' ' + count : '') + '</span>';
@@ -2519,7 +2642,276 @@
     }
   }
   annivCalInit();
+
+  // ==========================================================
+  // BẢN ĐỒ SỐ MỘ (GRAVEYARD MAP)
+  // ==========================================================
+  function loadGraveyardList() {
+    const content = document.getElementById('graveyardContent');
+    if (!content) return;
+    content.innerHTML = '<div class="loading">Đang tải danh sách phần mộ...</div>';
+    
+    const options = {
+      search: document.getElementById('graveSearch').value.trim(),
+      status: document.getElementById('graveStatusFilter').value
+    };
+
+    callApi('getPhanMoList', options)
+      .then(res => {
+        if (!res || !res.success || !Array.isArray(res.data)) {
+          content.innerHTML = '<div class="empty">Không tải được dữ liệu phần mộ.</div>';
+          return;
+        }
+        allGravesCache = res.data;
+        renderGraveyardTable(res.data);
+        initGraveyardMap();
+      })
+      .catch(err => {
+        content.innerHTML = '<div class="empty">Lỗi: ' + escapeHtml(errorMessage(err)) + '</div>';
+      });
+  }
+
+  function renderGraveyardTable(records) {
+    const content = document.getElementById('graveyardContent');
+    if (!records.length) {
+      content.innerHTML = '<div class="empty"><div class="empty-icon">🗺️</div><h3>Chưa có phần mộ nào</h3><p>Hãy thêm thông tin phần mộ mới.</p></div>';
+      return;
+    }
+
+    const rows = records.map(function(item, index) {
+      const inactive = item.TRANG_THAI === 'NGUNG_HOAT_DONG';
+      const googleMapsUrl = item.LATITUDE && item.LONGITUDE ? `https://www.google.com/maps/search/?api=1&query=${item.LATITUDE},${item.LONGITUDE}` : '#';
+      
+      return `<tr>
+        <td>${index + 1}</td>
+        <td><strong>${escapeHtml(item.TEN_THANHVIEN || 'Chưa rõ thành viên')}</strong></td>
+        <td>${escapeHtml(item.TEN_KHU_MO || '—')}<br><small class="muted">${escapeHtml(item.KHU_VUC || '')}</small></td>
+        <td>${escapeHtml(item.VI_TRI_MO || item.DIA_CHI || '—')}</td>
+        <td>${item.LATITUDE && item.LONGITUDE ? `<a href="${googleMapsUrl}" target="_blank" class="btn btn-secondary btn-small">🗺️ Chỉ đường</a>` : 'Chưa có GPS'}</td>
+        <td>${inactive ? statusLabel('NGUNG_HOAT_DONG') : statusLabel('DANG_HOAT_DONG')}</td>
+        <td>
+          <button class="btn btn-secondary btn-small" onclick="editGraveyard('${escapeJs(item.ID_PHANMO)}')">Sửa</button>
+          <button class="btn btn-danger btn-small" onclick="deleteGraveyard('${escapeJs(item.ID_PHANMO)}')">Ngừng</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    content.innerHTML = `
+      <div class="list-summary"><span>Tìm thấy <strong>${records.length}</strong> phần mộ</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>STT</th><th>Thành viên</th><th>Khu mộ / Nghĩa trang</th><th>Vị trí chi tiết</th><th>Bản đồ GPS</th><th>Trạng thái</th><th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function initGraveyardMap() {
+    const container = document.getElementById('graveyardMap');
+    if (!container) return;
+
+    if (graveyardMapInstance) {
+      graveyardMapInstance.remove();
+      graveyardMapInstance = null;
+    }
+
+    let defaultLat = 21.0285, defaultLng = 105.8542, defaultZoom = 6;
+    const validGrave = allGravesCache.find(g => g.LATITUDE && g.LONGITUDE);
+    if (validGrave) {
+      defaultLat = parseFloat(validGrave.LATITUDE);
+      defaultLng = parseFloat(validGrave.LONGITUDE);
+      defaultZoom = 13;
+    }
+
+    graveyardMapInstance = L.map('graveyardMap').setView([defaultLat, defaultLng], defaultZoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(graveyardMapInstance);
+
+    allGravesCache.forEach(function(g) {
+      if (g.LATITUDE && g.LONGITUDE) {
+        const lat = parseFloat(g.LATITUDE);
+        const lng = parseFloat(g.LONGITUDE);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const marker = L.marker([lat, lng]).addTo(graveyardMapInstance);
+          const navUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+          marker.bindPopup(`
+            <div style="min-width: 180px;">
+              <strong style="color: #245c45; font-size: 14px;">${escapeHtml(g.TEN_THANHVIEN || 'Phần mộ')}</strong><br>
+              <b>Khu mộ:</b> ${escapeHtml(g.TEN_KHU_MO || '—')}<br>
+              <b>Vị trí:</b> ${escapeHtml(g.VI_TRI_MO || g.KHU_VUC || '—')}<br><br>
+              <a href="${navUrl}" target="_blank" style="background:#245c45; color:#fff; padding:5px 10px; border-radius:4px; text-decoration:none; display:inline-block; font-size:12px;">🗺️ Mở Google Maps</a>
+            </div>
+          `);
+        }
+      }
+    });
+  }
+
+  function openNewGraveyardForm() {
+    document.getElementById('graveyardForm').reset();
+    document.querySelector('#graveyardForm [name="ID_PHANMO"]').value = '';
+    document.getElementById('graveFormTitle').textContent = 'Thêm phần mộ mới';
+    
+    callApi('getThanhVienList', {status: ''}).then(res => {
+      const list = normalizeTreeSearchResult(res);
+      const opts = '<option value="">-- Chọn thành viên --</option>' + list.map(p => {
+        const id = p.ID_THANHVIEN || p.ID;
+        return `<option value="${escapeHtml(id)}">${escapeHtml(p.HO_TEN)}</option>`;
+      }).join('');
+      document.getElementById('graveMemberSelect').innerHTML = opts;
+    });
+
+    showPage('graveyard-form');
+    setTimeout(initPickerMap, 300);
+  }
+
+  function initPickerMap(initLat, initLng) {
+    const container = document.getElementById('pickerMap');
+    if (!container) return;
+
+    if (pickerMapInstance) {
+      pickerMapInstance.remove();
+      pickerMapInstance = null;
+    }
+
+    const lat = initLat || 21.0285;
+    const lng = initLng || 105.8542;
+
+    pickerMapInstance = L.map('pickerMap').setView([lat, lng], initLat ? 15 : 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(pickerMapInstance);
+
+    if (initLat && initLng) {
+      pickerMarker = L.marker([lat, lng]).addTo(pickerMapInstance);
+    }
+
+    pickerMapInstance.on('click', function(e) {
+      const clickedLat = e.latlng.lat.toFixed(6);
+      const clickedLng = e.latlng.lng.toFixed(6);
+      
+      document.getElementById('graveLat').value = clickedLat;
+      document.getElementById('graveLng').value = clickedLng;
+
+      if (pickerMarker) {
+        pickerMarker.setLatLng(e.latlng);
+      } else {
+        pickerMarker = L.marker(e.latlng).addTo(pickerMapInstance);
+      }
+    });
+  }
+
+  function getCurrentLocationGPS() {
+    if (!navigator.geolocation) {
+      alert('Trình duyệt của bạn không hỗ trợ định vị GPS.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function(position) {
+      const lat = position.coords.latitude.toFixed(6);
+      const lng = position.coords.longitude.toFixed(6);
+      
+      document.getElementById('graveLat').value = lat;
+      document.getElementById('graveLng').value = lng;
+
+      if (pickerMapInstance) {
+        pickerMapInstance.setView([lat, lng], 17);
+        if (pickerMarker) {
+          pickerMarker.setLatLng([lat, lng]);
+        } else {
+          pickerMarker = L.marker([lat, lng]).addTo(pickerMapInstance);
+        }
+      }
+      alert('Đã lấy tọa độ GPS hiện tại thành công!');
+    }, function(error) {
+      alert('Không thể lấy vị trí GPS: ' + error.message);
+    }, { enableHighAccuracy: true });
+  }
+
+  function saveGraveyardForm(event) {
+    event.preventDefault();
+    const form = document.getElementById('graveyardForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const id = data.ID_PHANMO;
+    delete data.ID_PHANMO;
+
+    const btn = document.getElementById('saveGraveButton');
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu...';
+
+    const action = id ? 'updatePhanMo' : 'createPhanMo';
+    const payload = id ? { id: id, data: data } : { data: data };
+
+    callApi(action, payload)
+      .then(res => {
+        btn.disabled = false;
+        btn.textContent = '💾 Lưu phần mộ';
+        if (!res || res.success === false) {
+          alert(res.message || 'Không thể lưu phần mộ.');
+          return;
+        }
+        alert('Đã lưu thông tin phần mộ thành công!');
+        showPage('graveyard');
+        loadGraveyardList();
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.textContent = '💾 Lưu phần mộ';
+        alert('Lỗi: ' + errorMessage(err));
+      });
+  }
+
+  function editGraveyard(id) {
+    callApi('getPhanMoById', { id: id })
+      .then(res => {
+        if (!res || !res.success || !res.data) {
+          alert('Không tìm thấy thông tin phần mộ.');
+          return;
+        }
+        const item = res.data;
+        openNewGraveyardForm();
+        document.getElementById('graveFormTitle').textContent = 'Cập nhật thông tin phần mộ';
+        
+        setTimeout(() => {
+          const form = document.getElementById('graveyardForm');
+          form.elements.ID_PHANMO.value = item.ID_PHANMO || '';
+          form.elements.ID_THANHVIEN.value = item.ID_THANHVIEN || '';
+          form.elements.TEN_KHU_MO.value = item.TEN_KHU_MO || '';
+          form.elements.KHU_VUC.value = item.KHU_VUC || '';
+          form.elements.DIA_CHI.value = item.DIA_CHI || '';
+          form.elements.VI_TRI_MO.value = item.VI_TRI_MO || '';
+          form.elements.LATITUDE.value = item.LATITUDE || '';
+          form.elements.LONGITUDE.value = item.LONGITUDE || '';
+          form.elements.HINH_ANH.value = item.HINH_ANH || '';
+          form.elements.GHI_CHU.value = item.GHI_CHU || '';
+
+          if (item.LATITUDE && item.LONGITUDE) {
+            initPickerMap(parseFloat(item.LATITUDE), parseFloat(item.LONGITUDE));
+          }
+        }, 300);
+      })
+      .catch(err => alert('Lỗi: ' + errorMessage(err)));
+  }
+
+  function deleteGraveyard(id) {
+    if (!confirm('Bạn có chắc muốn chuyển phần mộ này sang trạng thái ngừng hoạt động?')) return;
+    callApi('deletePhanMo', { id: id })
+      .then(res => {
+        if (res && res.success === false) {
+          alert(res.message || 'Không thể thực hiện.');
+          return;
+        }
+        loadGraveyardList();
+      })
+      .catch(err => alert('Lỗi: ' + errorMessage(err)));
+  }
 </script>
 </body>
 </html>
-
