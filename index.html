@@ -934,30 +934,37 @@ function initApiBridge() {
  */
 window.addEventListener('message', function (event) {
 
-  if (!bridgeFrame) return;
+  // Phai la iframe Bridge da tao; kiem tra source truoc de tranh
+  // nhan message tu frame/nguon khac tren trang.
+  if (!bridgeFrame || !bridgeFrame.contentWindow) return;
+  if (event.source !== bridgeFrame.contentWindow) return;
 
-  // Chi nhan thong diep tu iframe Bridge
-   const isGoogleBridge =
-  event.origin === 'https://script.google.com' ||
-  (
-    event.origin.startsWith('https://') &&
-    new URL(event.origin).hostname.endsWith(
-      '-script.googleusercontent.com'
-    )
-  );
-
-if (!isGoogleBridge) return;
+  // Apps Script co the redirect /exec sang host googleusercontent.com.
+  // Cho phep host Apps Script hop le, nhung khong chap nhan origin khac.
+  let isGoogleBridge = false;
+  try {
+    const originUrl = new URL(event.origin);
+    const host = originUrl.hostname.toLowerCase();
+    isGoogleBridge = originUrl.protocol === 'https:' && (
+      host === 'script.google.com' ||
+      host.endsWith('.script.google.com') ||
+      host.endsWith('-script.googleusercontent.com')
+    );
+  } catch (error) {
+    isGoogleBridge = false;
+  }
+  if (!isGoogleBridge) return;
 
   const msg = event.data;
-
-  if (!msg || msg.type !== 'GIA_PHA_API_RESPONSE') return;
+  if (!msg || msg.type !== 'GIA_PHA_API_RESPONSE' || !msg.requestId) return;
 
   const pending = bridgePending[msg.requestId];
-
-  if (!pending) return;
+  if (!pending) {
+    console.warn('[GITHUB] Bo qua response khong co request dang cho:', msg.requestId);
+    return;
+  }
 
   clearTimeout(pending.timeout);
-
   delete bridgePending[msg.requestId];
 
   if (msg.success) {
