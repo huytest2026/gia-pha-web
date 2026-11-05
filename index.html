@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quản lý gia phả dòng họ</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root {
       --primary: #245c45;
@@ -383,6 +384,17 @@
       .anniv-calendar-toolbar { justify-content: center; }
       .anniv-calendar-year { width: 100%; justify-content: center; }
     }
+
+    /* ================= BAN DO SO MO ================= */
+    .grave-map-toolbar { display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin:12px 0; }
+    #phanMoMap { width:100%; height:460px; min-height:320px; border:1px solid var(--border); border-radius:10px; z-index:1; }
+    .grave-map-help { background:#f4f7f4; border:1px solid var(--border); padding:10px 12px; border-radius:8px; color:var(--muted); font-size:12px; line-height:1.6; margin:10px 0; }
+    .grave-coordinate-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .grave-map-popup { min-width:190px; line-height:1.5; }
+    .grave-map-popup strong { color:#245c45; }
+    .grave-photo-preview { max-width:100%; max-height:120px; object-fit:cover; border-radius:7px; margin-top:7px; }
+    .grave-list-actions { white-space:nowrap; }
+    @media(max-width:700px) { #phanMoMap { height:360px; } .grave-coordinate-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -408,6 +420,7 @@
       <button class="nav-item" data-page="tree" onclick="showPage('tree', this)">🌳 Cây gia phả</button>
       <button class="nav-item" data-page="relations" onclick="showPage('relations', this)">👨‍👩‍👧‍👦 Quan hệ gia đình</button>
       <button class="nav-item" data-page="anniversaries" onclick="showPage('anniversaries', this)">🕯️ Ngày giỗ & nhắc lịch</button>
+      <button class="nav-item" data-page="phanmo" onclick="showPage('phanmo', this)">🪦 Bản đồ số mộ</button>
     </aside>
 
     <main class="main-panel">
@@ -658,6 +671,93 @@
         <div id="anniversaryList"><div class="loading">Đang tải danh sách ngày giỗ...</div></div>
       </section>
 
+      <!-- BAN DO SO MO - MODULE MOI, DOC/GHI SHEET PHANMO -->
+      <section id="page-phanmo" style="display:none">
+        <div class="panel-heading">
+          <div>
+            <h2>🪦 Bản đồ số mộ</h2>
+            <div class="hint" style="margin-top:6px">Quản lý vị trí phần mộ theo từng thành viên. Có thể lấy GPS hoặc nhấn trực tiếp lên bản đồ để chọn tọa độ.</div>
+          </div>
+          <button class="btn btn-secondary" onclick="loadPhanMoPage()">↻ Làm mới</button>
+        </div>
+
+        <div class="info-card">
+          <h3 id="phanMoFormTitle">＋ Thêm thông tin phần mộ</h3>
+          <form id="phanMoForm" onsubmit="savePhanMoForm(event)">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="phanMoMember">Thành viên *</label>
+                <select id="phanMoMember" name="ID_THANHVIEN" required>
+                  <option value="">-- Chọn thành viên --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="phanMoCemetery">Tên khu mộ / nghĩa trang *</label>
+                <input id="phanMoCemetery" name="TEN_KHU_MO" required maxlength="250" placeholder="Ví dụ: Nghĩa trang gia tộc">
+              </div>
+              <div class="form-group">
+                <label for="phanMoAddress">Địa chỉ</label>
+                <input id="phanMoAddress" name="DIA_CHI" placeholder="Thôn, xã, huyện, tỉnh">
+              </div>
+              <div class="form-group">
+                <label for="phanMoArea">Khu vực / lô mộ</label>
+                <input id="phanMoArea" name="KHU_VUC" placeholder="Ví dụ: Khu A, hàng 2">
+              </div>
+              <div class="form-group full">
+                <label for="phanMoPosition">Vị trí / mô tả nhận diện mộ</label>
+                <input id="phanMoPosition" name="VI_TRI_MO" placeholder="Ví dụ: Hàng thứ 3, ngôi thứ 5 tính từ cổng">
+              </div>
+              <div class="form-group full">
+                <label>Tọa độ GPS</label>
+                <div class="grave-coordinate-grid">
+                  <input id="phanMoLatitude" name="LATITUDE" type="number" step="any" min="-90" max="90" placeholder="Vĩ độ (Latitude)">
+                  <input id="phanMoLongitude" name="LONGITUDE" type="number" step="any" min="-180" max="180" placeholder="Kinh độ (Longitude)">
+                </div>
+                <div class="grave-map-toolbar">
+                  <button type="button" class="btn btn-primary" onclick="phanMoGetCurrentGPS()">📍 Lấy vị trí GPS hiện tại</button>
+                  <button type="button" class="btn btn-secondary" onclick="phanMoClearCoordinates()">Xóa tọa độ</button>
+                  <span id="phanMoGpsStatus" class="hint">Có thể nhấn lên bản đồ để chọn vị trí.</span>
+                </div>
+                <input type="hidden" id="phanMoAccuracy" name="DO_CHINH_XAC">
+                <input type="hidden" id="phanMoCoordinateSource" name="NGUON_TOA_DO">
+              </div>
+              <div class="form-group full">
+                <label for="phanMoPhoto">Link hình ảnh phần mộ</label>
+                <input id="phanMoPhoto" name="HINH_ANH" type="url" placeholder="https://...">
+              </div>
+              <div class="form-group full">
+                <label for="phanMoNote">Ghi chú</label>
+                <textarea id="phanMoNote" name="GHI_CHU" placeholder="Thông tin bổ sung về phần mộ..."></textarea>
+              </div>
+            </div>
+
+            <div class="grave-map-help">
+              <b>Hướng dẫn chọn tọa độ:</b> Cho phép trình duyệt truy cập vị trí để lấy GPS tại chỗ, hoặc nhấn vào đúng vị trí phần mộ trên bản đồ. Tọa độ có thể để trống nếu chưa xác định được vị trí.
+            </div>
+            <div id="phanMoMap"></div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" onclick="resetPhanMoForm()">Làm mới biểu mẫu</button>
+              <button type="submit" class="btn btn-primary" id="savePhanMoButton">💾 Lưu phần mộ</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel-heading">
+          <div><h2 style="font-size:17px">Danh sách phần mộ</h2><div class="hint">Chọn một phần mộ để xem vị trí trên bản đồ hoặc mở chỉ đường.</div></div>
+        </div>
+        <div class="filters" style="grid-template-columns:minmax(180px,2fr) minmax(150px,1fr) auto">
+          <input id="phanMoSearch" type="search" placeholder="Tìm tên người mất, khu mộ, địa chỉ..." oninput="renderPhanMoList()">
+          <select id="phanMoStatusFilter" onchange="renderPhanMoList()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="DANG_HOAT_DONG">Đang hoạt động</option>
+            <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+          </select>
+          <button class="btn btn-secondary" onclick="loadPhanMoList()">🔎 Tải danh sách</button>
+        </div>
+        <div id="phanMoSummary" class="list-summary"></div>
+        <div id="phanMoList"><div class="loading">Đang tải danh sách phần mộ...</div></div>
+      </section>
+
       <!-- QUAN HE GIA DINH -->
       <section id="page-relations" style="display:none">
         <div class="panel-heading">
@@ -804,7 +904,7 @@
   let currentTreeViewMode = 'list';
   let currentTreeRootId = '';
 
-  const PAGE_IDS = ['overview', 'form', 'members', 'member-form', 'member-detail', 'tree', 'relations', 'anniversaries'];
+  const PAGE_IDS = ['overview', 'form', 'members', 'member-form', 'member-detail', 'tree', 'relations', 'anniversaries', 'phanmo'];
 
   function treePersonId(person) {
     if (!person) return '';
@@ -848,6 +948,9 @@
     if (page === 'anniversaries') {
       loadAnniversaryMembers();
       loadAnniversaries();
+    }
+    if (page === 'phanmo') {
+      loadPhanMoPage();
     }
   }
 
@@ -2519,6 +2622,288 @@
     }
   }
   annivCalInit();
+
+  // ==========================================================
+  // BAN DO SO MO - PHAN HE RIENG, KHONG THAY DOI CAC MODULE CU
+  // ==========================================================
+  let phanMoMap = null;
+  let phanMoMarkerLayer = null;
+  let phanMoDraftMarker = null;
+  let phanMoRecords = [];
+  let phanMoMembers = [];
+  let phanMoEditId = '';
+  let phanMoLoading = false;
+
+  function loadPhanMoPage() {
+    initPhanMoMap();
+    loadPhanMoMembers();
+    loadPhanMoList();
+  }
+
+  function initPhanMoMap() {
+    const mapEl = document.getElementById('phanMoMap');
+    if (!mapEl || typeof L === 'undefined') {
+      const status = document.getElementById('phanMoGpsStatus');
+      if (status) status.textContent = 'Không tải được thư viện bản đồ. Hãy kiểm tra kết nối Internet.';
+      return;
+    }
+    if (!phanMoMap) {
+      phanMoMap = L.map(mapEl).setView([16.0, 108.0], 5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(phanMoMap);
+      phanMoMarkerLayer = L.layerGroup().addTo(phanMoMap);
+      phanMoMap.on('click', function(event) {
+        phanMoSetCoordinates(event.latlng.lat, event.latlng.lng, '', 'CHON_TREN_BAN_DO');
+        const status = document.getElementById('phanMoGpsStatus');
+        if (status) status.textContent = 'Đã chọn tọa độ bằng cách nhấn trên bản đồ.';
+      });
+    }
+    setTimeout(function() {
+      if (phanMoMap) phanMoMap.invalidateSize();
+    }, 150);
+  }
+
+  function loadPhanMoMembers() {
+    const select = document.getElementById('phanMoMember');
+    if (!select) return;
+    const previous = select.value;
+    select.innerHTML = '<option value="">-- Đang tải thành viên --</option>';
+    callApi('getThanhVienList', {status: ''})
+      .then(function(result) {
+        if (!result || result.success === false || !Array.isArray(result.data)) {
+          throw new Error(result && result.message ? result.message : 'Không tải được danh sách thành viên.');
+        }
+        phanMoMembers = result.data;
+        select.innerHTML = '<option value="">-- Chọn thành viên --</option>' + phanMoMembers.map(function(member) {
+          const years = [member.NAM_SINH || yearFromDate(member.NGAY_SINH), member.NAM_MAT || yearFromDate(member.NGAY_MAT)].filter(Boolean).join('–');
+          const label = (member.HO_TEN || member.ID_THANHVIEN || '') + (years ? ' (' + years + ')' : '');
+          return '<option value="' + escapeHtml(member.ID_THANHVIEN || '') + '">' + escapeHtml(label) + '</option>';
+        }).join('');
+        if (previous) select.value = previous;
+      })
+      .catch(function(error) {
+        select.innerHTML = '<option value="">-- Không tải được thành viên --</option>';
+        showNotice(errorMessage(error), 'error');
+      });
+  }
+
+  function loadPhanMoList() {
+    const target = document.getElementById('phanMoList');
+    if (target) target.innerHTML = '<div class="loading">Đang tải danh sách phần mộ...</div>';
+    callApi('getPhanMoList', {status: ''})
+      .then(function(result) {
+        if (!result || result.success === false || !Array.isArray(result.data)) {
+          throw new Error(result && result.message ? result.message : 'Không nhận được danh sách phần mộ.');
+        }
+        phanMoRecords = result.data;
+        renderPhanMoList();
+        renderPhanMoMarkers();
+      })
+      .catch(function(error) {
+        if (target) target.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>' + escapeHtml(errorMessage(error)) + '</p></div>';
+        showNotice(errorMessage(error), 'error');
+      });
+  }
+
+  function renderPhanMoList() {
+    const target = document.getElementById('phanMoList');
+    if (!target) return;
+    const query = String(document.getElementById('phanMoSearch')?.value || '').trim().toLocaleLowerCase('vi');
+    const status = document.getElementById('phanMoStatusFilter')?.value || '';
+    const records = phanMoRecords.filter(function(row) {
+      if (status && String(row.TRANG_THAI || '') !== status) return false;
+      const content = [row.TEN_THANHVIEN, row.TEN_KHU_MO, row.DIA_CHI, row.KHU_VUC, row.VI_TRI_MO]
+        .join(' ').toLocaleLowerCase('vi');
+      return !query || content.indexOf(query) >= 0;
+    });
+    const summary = document.getElementById('phanMoSummary');
+    if (summary) summary.textContent = 'Đang hiển thị ' + records.length + ' / ' + phanMoRecords.length + ' bản ghi phần mộ.';
+    if (!records.length) {
+      target.innerHTML = '<div class="empty"><div class="empty-icon">🪦</div><h3>Chưa có thông tin phần mộ</h3><p>Hãy thêm phần mộ đầu tiên bằng biểu mẫu phía trên.</p></div>';
+      return;
+    }
+    const rows = records.map(function(row, index) {
+      const hasCoords = row.LATITUDE !== '' && row.LATITUDE != null && row.LONGITUDE !== '' && row.LONGITUDE != null &&
+        isFinite(Number(row.LATITUDE)) && isFinite(Number(row.LONGITUDE));
+      const statusHtml = row.TRANG_THAI === 'NGUNG_HOAT_DONG'
+        ? '<span class="status inactive">Ngừng hoạt động</span>' : '<span class="status">Đang hoạt động</span>';
+      const mapAction = hasCoords && row.TRANG_THAI !== 'NGUNG_HOAT_DONG'
+        ? '<button class="btn btn-secondary btn-small" onclick="phanMoFocusMap(' + index + ')">📍 Xem bản đồ</button><a class="btn btn-secondary btn-small" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(row.LATITUDE + ',' + row.LONGITUDE) + '">Chỉ đường</a>'
+        : '<span class="muted">' + (hasCoords ? 'Đã ngừng hoạt động' : 'Chưa có tọa độ') + '</span>';
+      return '<tr>' +
+        '<td>' + (index + 1) + '</td>' +
+        '<td><b class="person-name">' + escapeHtml(row.TEN_THANHVIEN || 'Chưa liên kết thành viên') + '</b><div class="hint">' + escapeHtml([row.NAM_SINH, row.NAM_MAT].filter(Boolean).join(' – ')) + '</div></td>' +
+        '<td>' + escapeHtml(row.TEN_KHU_MO || '') + '<div class="hint">' + escapeHtml(row.KHU_VUC || '') + '</div></td>' +
+        '<td>' + escapeHtml(row.DIA_CHI || row.VI_TRI_MO || '') + '</td>' +
+        '<td>' + statusHtml + '</td>' +
+        '<td class="grave-list-actions">' + mapAction +
+          ' <button class="btn btn-secondary btn-small" onclick="editPhanMo(\'' + escapeJs(row.ID_PHANMO) + '\')">✎ Sửa</button>' +
+          (row.TRANG_THAI === 'NGUNG_HOAT_DONG' ? '' : ' <button class="btn btn-danger btn-small" onclick="deactivatePhanMo(\'' + escapeJs(row.ID_PHANMO) + '\')">Ngừng</button>') +
+        '</td></tr>';
+    }).join('');
+    target.innerHTML = '<div class="table-wrap"><table><thead><tr><th>STT</th><th>Thành viên</th><th>Khu mộ</th><th>Địa chỉ / vị trí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function renderPhanMoMarkers() {
+    if (!phanMoMap || !phanMoMarkerLayer) return;
+    phanMoMarkerLayer.clearLayers();
+    phanMoRecords.forEach(function(row) {
+      if (row.TRANG_THAI === 'NGUNG_HOAT_DONG') return;
+      const lat = Number(row.LATITUDE), lng = Number(row.LONGITUDE);
+      if (!isFinite(lat) || !isFinite(lng) || row.LATITUDE === '' || row.LONGITUDE === '') return;
+      const popup = '<div class="grave-map-popup"><strong>' + escapeHtml(row.TEN_THANHVIEN || 'Chưa rõ thành viên') + '</strong><br>' +
+        escapeHtml(row.TEN_KHU_MO || '') + '<br>' + escapeHtml(row.KHU_VUC || '') + '<br>' +
+        escapeHtml(row.DIA_CHI || row.VI_TRI_MO || '') + '<br><small>' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</small><br>' +
+        '<a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(lat + ',' + lng) + '">Mở chỉ đường Google Maps</a></div>';
+      L.marker([lat, lng]).bindPopup(popup).addTo(phanMoMarkerLayer);
+    });
+  }
+
+  function phanMoFocusMap(index) {
+    const filtered = phanMoRecords.filter(function(row) {
+      const status = document.getElementById('phanMoStatusFilter')?.value || '';
+      const query = String(document.getElementById('phanMoSearch')?.value || '').trim().toLocaleLowerCase('vi');
+      const content = [row.TEN_THANHVIEN, row.TEN_KHU_MO, row.DIA_CHI, row.KHU_VUC, row.VI_TRI_MO].join(' ').toLocaleLowerCase('vi');
+      return (!status || String(row.TRANG_THAI || '') === status) && (!query || content.indexOf(query) >= 0);
+    });
+    const row = filtered[index];
+    if (!row || !phanMoMap) return;
+    const lat = Number(row.LATITUDE), lng = Number(row.LONGITUDE);
+    if (!isFinite(lat) || !isFinite(lng)) return;
+    phanMoMap.setView([lat, lng], 18);
+    phanMoMarkerLayer.eachLayer(function(marker) {
+      const p = marker.getLatLng();
+      if (Math.abs(p.lat - lat) < 0.0000001 && Math.abs(p.lng - lng) < 0.0000001) marker.openPopup();
+    });
+    document.getElementById('phanMoMap').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+
+  function phanMoSetCoordinates(lat, lng, accuracy, source) {
+    document.getElementById('phanMoLatitude').value = Number(lat).toFixed(7);
+    document.getElementById('phanMoLongitude').value = Number(lng).toFixed(7);
+    document.getElementById('phanMoAccuracy').value = accuracy === '' || accuracy == null ? '' : accuracy;
+    document.getElementById('phanMoCoordinateSource').value = source || '';
+    if (phanMoMap) {
+      if (phanMoDraftMarker) phanMoDraftMarker.remove();
+      phanMoDraftMarker = L.marker([lat, lng]).addTo(phanMoMap).bindPopup('Vị trí đang chọn').openPopup();
+      phanMoMap.setView([lat, lng], Math.max(phanMoMap.getZoom(), 16));
+    }
+  }
+
+  function phanMoGetCurrentGPS() {
+    const status = document.getElementById('phanMoGpsStatus');
+    if (!navigator.geolocation) {
+      if (status) status.textContent = 'Trình duyệt không hỗ trợ định vị GPS.';
+      return;
+    }
+    if (status) status.textContent = 'Đang xác định vị trí...';
+    navigator.geolocation.getCurrentPosition(function(position) {
+      phanMoSetCoordinates(position.coords.latitude, position.coords.longitude, position.coords.accuracy, 'GPS');
+      if (status) status.textContent = 'Đã lấy GPS. Sai số ước tính: ' + Math.round(position.coords.accuracy) + ' m.';
+    }, function(error) {
+      const messages = {
+        1: 'Bạn chưa cấp quyền truy cập vị trí.',
+        2: 'Không xác định được vị trí hiện tại.',
+        3: 'Định vị quá thời gian chờ.'
+      };
+      if (status) status.textContent = messages[error.code] || 'Không thể lấy vị trí GPS.';
+    }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+  }
+
+  function phanMoClearCoordinates() {
+    document.getElementById('phanMoLatitude').value = '';
+    document.getElementById('phanMoLongitude').value = '';
+    document.getElementById('phanMoAccuracy').value = '';
+    document.getElementById('phanMoCoordinateSource').value = '';
+    if (phanMoDraftMarker && phanMoMap) {
+      phanMoDraftMarker.remove();
+      phanMoDraftMarker = null;
+    }
+    const status = document.getElementById('phanMoGpsStatus');
+    if (status) status.textContent = 'Đã xóa tọa độ.';
+  }
+
+  function resetPhanMoForm() {
+    const form = document.getElementById('phanMoForm');
+    if (!form) return;
+    form.reset();
+    phanMoEditId = '';
+    document.getElementById('phanMoFormTitle').textContent = '＋ Thêm thông tin phần mộ';
+    document.getElementById('savePhanMoButton').textContent = '💾 Lưu phần mộ';
+    document.getElementById('savePhanMoButton').disabled = false;
+    if (phanMoDraftMarker && phanMoMap) phanMoDraftMarker.remove();
+    phanMoDraftMarker = null;
+    const status = document.getElementById('phanMoGpsStatus');
+    if (status) status.textContent = 'Có thể nhấn lên bản đồ để chọn vị trí.';
+  }
+
+  function editPhanMo(id) {
+    const row = phanMoRecords.find(function(item) { return String(item.ID_PHANMO) === String(id); });
+    if (!row) { showNotice('Không tìm thấy phần mộ cần sửa.', 'error'); return; }
+    phanMoEditId = String(id);
+    const form = document.getElementById('phanMoForm');
+    ['ID_THANHVIEN','TEN_KHU_MO','DIA_CHI','KHU_VUC','VI_TRI_MO','LATITUDE','LONGITUDE','DO_CHINH_XAC','NGUON_TOA_DO','HINH_ANH','GHI_CHU'].forEach(function(key) {
+      if (form.elements[key]) form.elements[key].value = row[key] == null ? '' : row[key];
+    });
+    document.getElementById('phanMoFormTitle').textContent = '✎ Cập nhật thông tin phần mộ';
+    document.getElementById('savePhanMoButton').textContent = '💾 Lưu thay đổi';
+    if (row.LATITUDE !== '' && row.LATITUDE != null && row.LONGITUDE !== '' && row.LONGITUDE != null) {
+      const lat = Number(row.LATITUDE), lng = Number(row.LONGITUDE);
+      if (isFinite(lat) && isFinite(lng)) {
+        if (phanMoMap) phanMoMap.setView([lat, lng], 17);
+        phanMoSetCoordinates(lat, lng, row.DO_CHINH_XAC || '', row.NGUON_TOA_DO || '');
+      }
+    }
+    document.getElementById('phanMoFormTitle').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+
+  function savePhanMoForm(event) {
+    event.preventDefault();
+    const form = document.getElementById('phanMoForm');
+    if (!form.reportValidity()) return;
+    const data = {};
+    Array.from(form.elements).forEach(function(el) {
+      if (el.name) data[el.name] = typeof el.value === 'string' ? el.value.trim() : el.value;
+    });
+    if ((data.LATITUDE && !data.LONGITUDE) || (!data.LATITUDE && data.LONGITUDE)) {
+      showNotice('Vui lòng nhập đủ cả vĩ độ và kinh độ.', 'error');
+      return;
+    }
+    const button = document.getElementById('savePhanMoButton');
+    if (phanMoLoading) return;
+    phanMoLoading = true;
+    button.disabled = true;
+    button.textContent = 'Đang lưu...';
+    const action = phanMoEditId ? 'updatePhanMo' : 'createPhanMo';
+    const payload = phanMoEditId ? {id:phanMoEditId, data:data} : {data:data};
+    callApi(action, payload)
+      .then(function(result) {
+        if (!result || result.success === false) throw new Error(result && result.message ? result.message : 'Không thể lưu phần mộ.');
+        showNotice(result.message || 'Đã lưu phần mộ thành công.', 'success');
+        resetPhanMoForm();
+        loadPhanMoList();
+      })
+      .catch(function(error) { showNotice(errorMessage(error), 'error'); })
+      .finally(function() {
+        phanMoLoading = false;
+        button.disabled = false;
+        button.textContent = phanMoEditId ? '💾 Lưu thay đổi' : '💾 Lưu phần mộ';
+      });
+  }
+
+  function deactivatePhanMo(id) {
+    if (!confirm('Bạn có chắc muốn chuyển phần mộ này sang trạng thái NGỪNG HOẠT ĐỘNG? Dữ liệu sẽ được giữ lại.')) return;
+    callApi('deletePhanMo', {id:id})
+      .then(function(result) {
+        if (!result || result.success === false) throw new Error(result && result.message ? result.message : 'Không thể cập nhật phần mộ.');
+        showNotice(result.message || 'Đã ngừng hoạt động phần mộ.', 'success');
+        loadPhanMoList();
+      })
+      .catch(function(error) { showNotice(errorMessage(error), 'error'); });
+  }
+
 </script>
 </body>
 </html>
