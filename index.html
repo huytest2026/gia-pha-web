@@ -1194,6 +1194,7 @@
     const success = function(result) {
       finish();
       showPage('members'); loadMembers();
+      initTreeMemberCache();
     };
     if (memberFormMode === 'edit' && currentMember && currentMember.ID_THANHVIEN) {
       callApi('updateThanhVien', {id: currentMember.ID_THANHVIEN, data: data}).then(success).catch(finish);
@@ -1210,7 +1211,6 @@
     });
   }
   function renderMemberDetail(p) {
-    const inactive = p.TRANG_THAI === 'NGUNG_HOAT_DONG';
     const yearLine = [p.NAM_SINH || yearFromDate(p.NGAY_SINH), p.NAM_MAT || yearFromDate(p.NGAY_MAT)].filter(Boolean).join(' – ');
     document.getElementById('memberDetailContent').innerHTML = '<h3>' + escapeHtml(p.HO_TEN) + '</h3>' +
       infoRow('Giới tính', p.GIOI_TINH) + infoRow('Năm sinh – mất', yearLine) + infoRow('Quê quán', p.QUE_QUAN) +
@@ -1219,21 +1219,125 @@
   function backToMembers() { showPage('members'); loadMembers(); }
   function deactivateMember(id) {
     if (!confirm('Ngừng hoạt động thành viên này?')) return;
-    callApi('deleteThanhVien', {id: id}).then(() => { showPage('members'); loadMembers(); });
+    callApi('deleteThanhVien', {id: id}).then(() => { showPage('members'); loadMembers(); initTreeMemberCache(); });
   }
   function reactivateMember(id) {
-    callApi('reactivateThanhVien', {id: id}).then(() => { showPage('members'); loadMembers(); });
+    callApi('reactivateThanhVien', {id: id}).then(() => { showPage('members'); loadMembers(); initTreeMemberCache(); });
   }
 
-  // Khởi tạo các phân hệ phụ (Cây gia phả, Quan hệ, Ngày giỗ, Bản đồ mộ)
-  function initTreeMemberCache() {}
-  function loadFamilyTree() {}
+  // --- CỘT MỐC CÂY GIA PHẢ ---
+  function showTreeNotice(message, type) {
+    const el = document.getElementById('treeNotice');
+    if (!el) return;
+    el.className = 'notice ' + (type || 'info');
+    el.textContent = message || '';
+  }
+
+  function normalizeTreeSearchResult(result) {
+    if (Array.isArray(result)) return result;
+    if (result && Array.isArray(result.data)) return result.data;
+    return [];
+  }
+
+  function initTreeMemberCache() {
+    callApi('getThanhVienList', { status: '' })
+      .then(result => {
+        const rawList = normalizeTreeSearchResult(result);
+        treeMemberCache = rawList.map(function(person) {
+          return {
+            id: person.ID_THANHVIEN || person.ID || '',
+            name: person.HO_TEN || person.TEN_THANH_VIEN || '',
+            year: person.NAM_SINH || yearFromDate(person.NGAY_SINH) || ''
+          };
+        }).filter(function(p) { return p.id && p.name; });
+        updateTreeDatalist('');
+      })
+      .catch(error => { console.error(error); });
+  }
+
+  function searchTreeMembers() {
+    const input = document.getElementById('treeMemberSearch');
+    const keyword = input.value.trim().toLowerCase().replace(/\s*\(\d{4}\).*$/, '').trim();
+    updateTreeDatalist(keyword);
+  }
+
+  function updateTreeDatalist(keyword) {
+    const datalist = document.getElementById('treeMemberOptions');
+    if (!datalist) return;
+    const filtered = treeMemberCache.filter(function(item) {
+      return !keyword || item.name.toLowerCase().includes(keyword);
+    });
+    datalist.innerHTML = filtered.map(function(item) {
+      const label = item.name + (item.year ? ' (' + item.year + ')' : '');
+      return '<option value="' + escapeHtml(label) + '"></option>';
+    }).join('');
+  }
+
+  function findTreeMemberId() {
+    const inputVal = document.getElementById('treeMemberSearch').value.trim();
+    if (!inputVal) return '';
+    const cleanInputName = inputVal.replace(/\s*\(\d{4}\).*$/, '').trim().toLowerCase();
+    const found = treeMemberCache.find(function(item) {
+      const label = (item.name + (item.year ? ' (' + item.year + ')' : '')).toLowerCase();
+      return label === inputVal.toLowerCase() || item.name.toLowerCase() === cleanInputName;
+    });
+    if (found) return found.id;
+    const matched = treeMemberCache.find(function(item) {
+      return item.name.toLowerCase().includes(cleanInputName);
+    });
+    return matched ? matched.id : '';
+  }
+
+  function selectTreeRoot() {
+    let id = findTreeMemberId();
+    if (!id) {
+      showTreeNotice('Vui lòng chọn chính xác tên thành viên từ danh sách gợi ý.', 'error');
+      return;
+    }
+    currentTreeRootId = id;
+    loadFamilyTree();
+  }
+
+  function loadFamilyTree() {
+    if (!currentTreeRootId) {
+      showTreeNotice('Bạn chưa chọn thành viên làm gốc.', 'error');
+      return;
+    }
+    const content = document.getElementById('treeContent');
+    content.innerHTML = '<div class="loading">Đang xây dựng cây gia phả...</div>';
+    const scope = document.getElementById('treeScope').value;
+
+    callApi('getCayGiaPha', { rootId: currentTreeRootId, options: { scope: scope, maxDepth: 20, includeSpouses: true } })
+      .then(result => {
+        if (!result || result.success === false || !result.data) {
+          content.innerHTML = '<div class="empty"><div class="empty-icon">🌳</div><h3>Chưa tạo được cây gia phả</h3></div>';
+          return;
+        }
+        currentTreeData = result.data;
+        renderFamilyTree(result.data);
+      })
+      .catch(error => {
+        content.innerHTML = '<div class="empty">Không tải được cây gia phả.</div>';
+      });
+  }
+
+  function renderFamilyTree(data) {
+    const content = document.getElementById('treeContent');
+    const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+    if (!nodes.length) {
+      content.innerHTML = '<div class="empty">Không có dữ liệu thành viên trong nhánh này.</div>';
+      return;
+    }
+    content.innerHTML = '<div class="info-card"><h3>🌳 Cây gia phả đã tải thành công</h3><p>Tổng số thành viên trong nhánh: ' + nodes.length + '</p></div>' +
+      '<div class="tree-person-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px;">' +
+      nodes.map(p => '<div class="tree-person"><div class="tree-person-name">👤 ' + escapeHtml(p.HO_TEN || p.name) + '</div></div>').join('') +
+      '</div>';
+  }
+
+  // Khởi tạo các phân hệ phụ khác
   function loadAllFamilyRelations() {}
-  function loadParentRelations() {}
-  function loadMarriages() {}
   function loadAnniversaries() {}
   function loadAnniversaryMembers() {}
-  function loadAnniversaryCalendar() {}
 
   function loadGraveyardList() {
     const content = document.getElementById('graveyardContent');
