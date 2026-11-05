@@ -886,7 +886,6 @@
 <div class="footer">HỆ THỐNG QUẢN LÝ GIA PHẢ · Lưu giữ cội nguồn và truyền thống dòng họ</div>
 
 <script>
-  // Cấu hình URL Web App Google Apps Script của bạn
   const API_URL = "https://script.google.com/macros/s/AKfycbwxTisTYK5nuu-_fvIWd7RdBBHjYbGeyf8JvqAnwYw9WG82nJc7xkiWABnCcSaJHG_4Og/exec";
 
   function callApi(action, payload = {}) {
@@ -958,16 +957,9 @@
 
     hideNotice();
 
-    if (page === 'relations') {
-      loadAllFamilyRelations();
-    }
-    if (page === 'anniversaries') {
-      loadAnniversaryMembers();
-      loadAnniversaries();
-    }
-    if (page === 'graveyard') {
-      loadGraveyardList();
-    }
+    if (page === 'relations') loadAllFamilyRelations();
+    if (page === 'anniversaries') { loadAnniversaryMembers(); loadAnniversaries(); }
+    if (page === 'graveyard') loadGraveyardList();
   }
 
   function showNotice(message, type) {
@@ -989,7 +981,7 @@
   }
   function displayValue(value) { return value !== '' && value != null ? escapeHtml(value) : '<span class="muted">Chưa cập nhật</span>'; }
   function infoRow(label, value, isHtml) {
-    return `<div class="info-row"><div class="info-label">${escapeHtml(label)}</div><div class="info-value">${isHtml ? (value || '') : displayValue(value)}</div></div>`;
+    return '<div class="info-row"><div class="info-label">' + escapeHtml(label) + '</div><div class="info-value">' + (isHtml ? (value || '') : displayValue(value)) + '</div></div>';
   }
   function formatDate(value) {
     if (!value) return '';
@@ -1001,10 +993,10 @@
     if (!value) return '';
     const s = String(value);
     const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    if (match) return match[1] + '-' + match[2] + '-' + match[3];
     const date = new Date(value);
     if (isNaN(date.getTime())) return '';
-    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
   }
   function statusLabel(status) {
     if (status === 'NGUNG_HOAT_DONG') return '<span class="status inactive">Ngừng hoạt động</span>';
@@ -1014,14 +1006,12 @@
     return error && error.message ? error.message : String(error || 'Đã xảy ra lỗi không xác định.');
   }
 
-  // ---------------- DONG HO ----------------
   function loadDongHo() {
     document.getElementById('overviewContent').innerHTML = '<div class="loading">Đang tải dữ liệu dòng họ...</div>';
     callApi('getDongHoList', {status: ''})
       .then(result => {
         if (!result || !result.success) {
           document.getElementById('overviewContent').innerHTML = '<div class="empty">Không đọc được dữ liệu dòng họ.</div>';
-          showNotice('Không đọc được dữ liệu dòng họ.', 'error');
           return;
         }
         if (result.total > 0 && result.data && result.data.length) {
@@ -1034,45 +1024,30 @@
       })
       .catch(error => {
         document.getElementById('overviewContent').innerHTML = '<div class="empty">Không tải được dữ liệu dòng họ.</div>';
-        showNotice(errorMessage(error), 'error');
       });
   }
 
   function renderDongHoEmpty() {
-    document.getElementById('overviewContent').innerHTML = `
-      <div class="empty"><div class="empty-icon">🏛</div><h3>Chưa khởi tạo thông tin dòng họ</h3>
-      <p>Hãy nhập thông tin ban đầu để bắt đầu xây dựng cây gia phả.</p><br>
-      <button class="btn btn-primary" onclick="openNewDongHoForm()">+ Khởi tạo dòng họ</button></div>`;
-    document.getElementById('welcomeTitle').textContent = 'Chào mừng đến với gia phả dòng họ';
-    document.getElementById('welcomeDescription').textContent = 'Hãy khởi tạo thông tin dòng họ để bắt đầu lưu giữ cội nguồn.';
+    document.getElementById('overviewContent').innerHTML = '<div class="empty"><div class="empty-icon">🏛</div><h3>Chưa khởi tạo thông tin dòng họ</h3><p>Hãy nhập thông tin ban đầu để bắt đầu xây dựng cây gia phả.</p><br><button class="btn btn-primary" onclick="openNewDongHoForm()">+ Khởi tạo dòng họ</button></div>';
   }
 
   function renderOverview(data) {
     document.getElementById('welcomeTitle').textContent = data.TEN_DONGHO || 'Gia phả dòng họ';
     document.getElementById('welcomeDescription').textContent = data.GIOI_THIEU || 'Thông tin và lịch sử dòng họ.';
-    document.getElementById('overviewContent').innerHTML = `
-      <div class="info-card"><h3>Thông tin cơ bản</h3>
-        ${infoRow('Tên dòng họ', data.TEN_DONGHO)}${infoRow('Họ tộc', data.HO_TOC)}
-        ${infoRow('Tên thủy tổ', data.TEN_THUY_TO)}${infoRow('Năm khởi tổ', data.NAM_KHOI_TO)}
-        ${infoRow('Quê gốc', data.QUE_GOC)}${infoRow('Trạng thái', statusLabel(data.TRANG_THAI), true)}
-      </div>
-      <div class="info-card"><h3>Nhà thờ họ và ngày giỗ tổ</h3>
-        ${infoRow('Địa chỉ nhà thờ', data.DIA_CHI_NHA_THO)}${infoRow('Ngày giỗ tổ', formatDate(data.NGAY_GIO_TO))}
-      </div>
-      <div class="info-card"><h3>Giới thiệu và lịch sử</h3>
-        ${infoRow('Giới thiệu', data.GIOI_THIEU)}${infoRow('Lịch sử dòng họ', data.LICH_SU_DONGHO)}
-      </div>
-      <div class="info-card"><h3>Thông tin liên hệ</h3>
-        ${infoRow('Điện thoại', data.SO_DIEN_THOAI)}${infoRow('Email', data.EMAIL)}
-      </div>
-      <div style="text-align:right;color:#718078;font-size:12px">Mã dòng họ: ${escapeHtml(data.MA_DONGHO || '')}</div>`;
+    document.getElementById('overviewContent').innerHTML = '<div class="info-card"><h3>Thông tin cơ bản</h3>' +
+      infoRow('Tên dòng họ', data.TEN_DONGHO) + infoRow('Họ tộc', data.HO_TOC) +
+      infoRow('Tên thủy tổ', data.TEN_THUY_TO) + infoRow('Năm khởi tổ', data.NAM_KHOI_TO) +
+      infoRow('Quê gốc', data.QUE_GOC) + infoRow('Trạng thái', statusLabel(data.TRANG_THAI), true) +
+      '</div><div class="info-card"><h3>Nhà thờ họ và ngày giỗ tổ</h3>' +
+      infoRow('Địa chỉ nhà thờ', data.DIA_CHI_NHA_THO) + infoRow('Ngày giỗ tổ', formatDate(data.NGAY_GIO_TO)) +
+      '</div><div class="info-card"><h3>Giới thiệu và lịch sử</h3>' +
+      infoRow('Giới thiệu', data.GIOI_THIEU) + infoRow('Lịch sử dòng họ', data.LICH_SU_DONGHO) +
+      '</div><div class="info-card"><h3>Thông tin liên hệ</h3>' +
+      infoRow('Điện thoại', data.SO_DIEN_THOAI) + infoRow('Email', data.EMAIL) +
+      '</div><div style="text-align:right;color:#718078;font-size:12px">Mã dòng họ: ' + escapeHtml(data.MA_DONGHO || '') + '</div>';
   }
 
   function openNewDongHoForm() {
-    if (currentDongHo) {
-      showNotice('Hệ thống chỉ quản lý một dòng họ. Hãy cập nhật hồ sơ hiện tại.', 'error');
-      return;
-    }
     document.getElementById('dongHoForm').reset();
     document.getElementById('formTitle').textContent = 'Khởi tạo thông tin dòng họ';
     showPage('form');
@@ -1113,7 +1088,6 @@
     }
   }
 
-  // ---------------- THANH VIEN ----------------
   function loadMembers() {
     const content = document.getElementById('membersContent');
     if (!content) return;
@@ -1127,22 +1101,20 @@
       .then(result => {
         if (!result || result.success === false || !Array.isArray(result.data)) {
           content.innerHTML = '<div class="empty">Không nhận được danh sách thành viên hợp lệ.</div>';
-          showNotice('Không nhận được danh sách thành viên hợp lệ.', 'error');
           return;
         }
         memberListCache = result.data;
         renderMembers(result.data, result.total == null ? result.data.length : result.total);
       })
       .catch(error => {
-        content.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><h3>Không tải được danh sách</h3><p>${escapeHtml(errorMessage(error))}</p><br><button class="btn btn-secondary" onclick="loadMembers()">Thử tải lại</button></div>`;
-        showNotice(errorMessage(error), 'error');
+        content.innerHTML = '<div class="empty">Không tải được danh sách thành viên.</div>';
       });
   }
 
   function renderMembers(records, total) {
     const content = document.getElementById('membersContent');
     if (!records.length) {
-      content.innerHTML = `<div class="empty"><div class="empty-icon">👨‍👩‍👧‍👦</div><h3>Chưa có thành viên phù hợp</h3><p>Hãy thử thay đổi bộ lọc hoặc thêm thành viên mới.</p><br><button class="btn btn-primary" onclick="openNewMemberForm()">＋ Thêm thành viên</button></div>`;
+      content.innerHTML = '<div class="empty"><div class="empty-icon">👨‍👩‍👧‍👦</div><h3>Chưa có thành viên phù hợp</h3><p>Hãy thử thay đổi bộ lọc hoặc thêm thành viên mới.</p><br><button class="btn btn-primary" onclick="openNewMemberForm()">＋ Thêm thành viên</button></div>';
       return;
     }
     const rows = records.map(function(person, index) {
@@ -1150,23 +1122,23 @@
       const inactive = person.TRANG_THAI === 'NGUNG_HOAT_DONG';
       const years = [person.NAM_SINH || yearFromDate(person.NGAY_SINH), person.NAM_MAT || yearFromDate(person.NGAY_MAT)].filter(Boolean);
       const life = years.length ? years.join(' – ') : '—';
-      return `<tr>
-        <td>${index + 1}</td>
-        <td><div class="person-name">${escapeHtml(person.HO_TEN || '(Chưa có họ tên)')}</div>
-          ${person.TEN_GOI_KHAC ? `<div class="muted" style="margin-top:4px">${escapeHtml(person.TEN_GOI_KHAC)}</div>` : ''}
-          <div class="muted" style="font-size:11px;margin-top:4px">${escapeHtml(id)}</div></td>
-        <td>${escapeHtml(person.GIOI_TINH || '—')}</td>
-        <td>${escapeHtml(life)}</td>
-        <td>${escapeHtml(person.QUE_QUAN || '—')}</td>
-        <td>${statusLabel(person.TRANG_THAI)}</td>
-        <td>
-          <button class="btn btn-secondary btn-small" onclick="viewMember('${escapeJs(id)}')" title="Xem chi tiết">Xem</button>
-          ${inactive ? `<button class="btn btn-primary btn-small" onclick="reactivateMember('${escapeJs(id)}')">Kích hoạt</button>` : `<button class="btn btn-secondary btn-small" onclick="editMember('${escapeJs(id)}')">Sửa</button><button class="btn btn-danger btn-small" onclick="deactivateMember('${escapeJs(id)}')">Ngừng</button>`}
-        </td>
-      </tr>`;
+      return '<tr>' +
+        '<td>' + (index + 1) + '</td>' +
+        '<td><div class="person-name">' + escapeHtml(person.HO_TEN || '(Chưa có họ tên)') + '</div>' +
+        (person.TEN_GOI_KHAC ? '<div class="muted" style="margin-top:4px">' + escapeHtml(person.TEN_GOI_KHAC) + '</div>' : '') +
+        '<div class="muted" style="font-size:11px;margin-top:4px">' + escapeHtml(id) + '</div></td>' +
+        '<td>' + escapeHtml(person.GIOI_TINH || '—') + '</td>' +
+        '<td>' + escapeHtml(life) + '</td>' +
+        '<td>' + escapeHtml(person.QUE_QUAN || '—') + '</td>' +
+        '<td>' + statusLabel(person.TRANG_THAI) + '</td>' +
+        '<td>' +
+          '<button class="btn btn-secondary btn-small" onclick="viewMember(\'' + escapeJs(id) + '\')">Xem</button> ' +
+          (inactive ? '<button class="btn btn-primary btn-small" onclick="reactivateMember(\'' + escapeJs(id) + '\')">Kích hoạt</button>' : '<button class="btn btn-secondary btn-small" onclick="editMember(\'' + escapeJs(id) + '\')">Sửa</button><button class="btn btn-danger btn-small" onclick="deactivateMember(\'' + escapeJs(id) + '\')">Ngừng</button>') +
+        '</td>' +
+      '</tr>';
     }).join('');
-    content.innerHTML = `<div class="list-summary"><span>Tìm thấy <strong>${total}</strong> thành viên</span><span>Đang hiển thị ${records.length} bản ghi</span></div>
-      <div class="table-wrap"><table><thead><tr><th>STT</th><th>Họ tên / Mã thành viên</th><th>Giới tính</th><th>Năm sinh – năm mất</th><th>Quê quán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    content.innerHTML = '<div class="list-summary"><span>Tìm thấy <strong>' + total + '</strong> thành viên</span></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>STT</th><th>Họ tên / Mã</th><th>Giới tính</th><th>Năm sinh – mất</th><th>Quê quán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   function yearFromDate(value) {
     if (!value) return '';
@@ -1176,7 +1148,7 @@
     return isNaN(date.getTime()) ? '' : date.getFullYear();
   }
   function escapeJs(value) {
-    return String(value == null ? '' : value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/</g, '\\x3c').replace(/>/g, '\\x3e');
+    return String(value == null ? '' : value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
   }
   function openNewMemberForm() {
     currentMember = null; memberFormMode = 'create';
@@ -1188,14 +1160,13 @@
   function editMember(id) {
     callApi('getThanhVienById', {id: id})
       .then(result => {
-        if (!result || !result.data) { showNotice('Không tìm thấy thông tin thành viên.', 'error'); return; }
+        if (!result || !result.data) return;
         currentMember = result.data; memberFormMode = 'edit';
         fillMemberForm(currentMember);
         document.getElementById('memberFormTitle').textContent = 'Cập nhật thành viên';
         document.getElementById('saveMemberButton').textContent = '💾 Lưu thay đổi';
         showPage('member-form');
-      })
-      .catch(error => { showNotice(errorMessage(error), 'error'); });
+      });
   }
   function fillMemberForm(person) {
     const form = document.getElementById('memberForm');
@@ -1212,7 +1183,6 @@
     event.preventDefault();
     if (isSavingMember) return;
     const form = document.getElementById('memberForm');
-    if (!form.reportValidity()) return;
     const data = {};
     Array.from(form.elements).forEach(function(el) {
       if (el.name) data[el.name] = typeof el.value === 'string' ? el.value.trim() : el.value;
@@ -1220,1697 +1190,100 @@
     const button = document.getElementById('saveMemberButton');
     isSavingMember = true; button.disabled = true; button.textContent = 'Đang lưu...';
     
-    const finish = function() { isSavingMember = false; button.disabled = false; button.textContent = memberFormMode === 'edit' ? '💾 Lưu thay đổi' : '💾 Lưu thành viên'; };
+    const finish = function() { isSavingMember = false; button.disabled = false; button.textContent = '💾 Lưu'; };
     const success = function(result) {
       finish();
-      if (result && result.success === false) { showNotice('Không thể lưu thông tin thành viên.', 'error'); return; }
-      showNotice(memberFormMode === 'edit' ? 'Đã cập nhật thành viên thành công.' : 'Đã thêm thành viên thành công.', 'success');
       showPage('members'); loadMembers();
-      initTreeMemberCache();
     };
-    const failure = function(error) { finish(); showNotice(errorMessage(error), 'error'); };
-
     if (memberFormMode === 'edit' && currentMember && currentMember.ID_THANHVIEN) {
-      callApi('updateThanhVien', {id: currentMember.ID_THANHVIEN, data: data}).then(success).catch(failure);
+      callApi('updateThanhVien', {id: currentMember.ID_THANHVIEN, data: data}).then(success).catch(finish);
     } else {
-      callApi('createThanhVien', {data: data}).then(success).catch(failure);
+      callApi('createThanhVien', {data: data}).then(success).catch(finish);
     }
   }
   function viewMember(id) {
-    document.getElementById('memberDetailContent').innerHTML = '<div class="loading">Đang tải thông tin thành viên...</div>';
+    document.getElementById('memberDetailContent').innerHTML = '<div class="loading">Đang tải...</div>';
     showPage('member-detail');
-    callApi('getThanhVienById', {id: id})
-      .then(result => {
-        if (!result || !result.data) {
-          document.getElementById('memberDetailContent').innerHTML = '<div class="empty">Không tìm thấy thông tin thành viên.</div>';
-          return;
-        }
-        currentMember = result.data;
-        renderMemberDetail(currentMember);
-      })
-      .catch(error => {
-        document.getElementById('memberDetailContent').innerHTML = `<div class="empty">${escapeHtml(errorMessage(error))}</div>`;
-        showNotice(errorMessage(error), 'error');
-      });
+    callApi('getThanhVienById', {id: id}).then(result => {
+      if (!result || !result.data) return;
+      renderMemberDetail(result.data);
+    });
   }
   function renderMemberDetail(p) {
     const inactive = p.TRANG_THAI === 'NGUNG_HOAT_DONG';
-    const avatar = p.ANH_DAI_DIEN
-      ? `<img src="${escapeHtml(p.ANH_DAI_DIEN)}" alt="Ảnh đại diện" onerror="this.parentNode.textContent='👤'">`
-      : '👤';
     const yearLine = [p.NAM_SINH || yearFromDate(p.NGAY_SINH), p.NAM_MAT || yearFromDate(p.NGAY_MAT)].filter(Boolean).join(' – ');
-    document.getElementById('memberDetailContent').innerHTML = `
-      <div class="person-header"><div class="avatar-placeholder">${avatar}</div><div><h3>${escapeHtml(p.HO_TEN || 'Chưa có họ tên')}</h3>
-      <div class="muted">${escapeHtml(p.ID_THANHVIEN || '')}</div><div style="margin-top:8px">${statusLabel(p.TRANG_THAI)}</div></div></div>
-      <div class="info-card"><h3>Thông tin cơ bản</h3>
-        ${infoRow('Họ và tên', p.HO_TEN)}${infoRow('Tên gọi khác', p.TEN_GOI_KHAC)}${infoRow('Tên khai sinh', p.TEN_KHAI_SINH)}
-        ${infoRow('Giới tính', p.GIOI_TINH)}${infoRow('Năm sinh – năm mất', yearLine)}${infoRow('Ngày sinh', formatDate(p.NGAY_SINH))}
-        ${infoRow('Ngày mất', formatDate(p.NGAY_MAT))}${infoRow('Mã dòng họ', p.MA_DONGHO)}
-      </div>
-      <div class="info-card"><h3>Thông tin cá nhân</h3>
-        ${infoRow('Nơi sinh', p.NOI_SINH)}${infoRow('Quê quán', p.QUE_QUAN)}${infoRow('Địa chỉ hiện tại', p.DIA_CHI_HIEN_TAI)}
-        ${infoRow('Nghề nghiệp', p.NGHE_NGHIEP)}${infoRow('Chức vụ trong dòng họ', p.CHUC_VU_DONGHO)}
-      </div>
-      <div class="info-card"><h3>Tiểu sử và ghi chú</h3>${infoRow('Tiểu sử', p.TIEU_SU)}${infoRow('Ghi chú', p.GHI_CHU)}</div>
-      <div class="detail-actions">
-        ${inactive ? `<button class="btn btn-primary" onclick="reactivateMember('${escapeJs(p.ID_THANHVIEN)}')">Kích hoạt lại</button>` : `<button class="btn btn-primary" onclick="editMember('${escapeJs(p.ID_THANHVIEN)}')">✎ Chỉnh sửa</button><button class="btn btn-danger" onclick="deactivateMember('${escapeJs(p.ID_THANHVIEN)}')">Ngừng hoạt động</button>`}
-        <button class="btn btn-secondary" onclick="backToMembers()">← Quay lại danh sách</button>
-      </div>`;
+    document.getElementById('memberDetailContent').innerHTML = '<h3>' + escapeHtml(p.HO_TEN) + '</h3>' +
+      infoRow('Giới tính', p.GIOI_TINH) + infoRow('Năm sinh – mất', yearLine) + infoRow('Quê quán', p.QUE_QUAN) +
+      '<div class="detail-actions"><button class="btn btn-secondary" onclick="backToMembers()">← Quay lại</button></div>';
   }
   function backToMembers() { showPage('members'); loadMembers(); }
-
   function deactivateMember(id) {
-    if (!confirm('Bạn có chắc muốn chuyển thành viên này sang trạng thái NGỪNG HOẠT ĐỘNG? Dữ liệu sẽ được giữ lại, không bị xóa khỏi Google Sheets.')) return;
-    callApi('deleteThanhVien', {id: id})
-      .then(result => {
-        if (result && result.success === false) { showNotice('Không thể ngừng hoạt động thành viên.', 'error'); return; }
-        showNotice('Đã chuyển thành viên sang trạng thái ngừng hoạt động.', 'success');
-        showPage('members'); loadMembers();
-        initTreeMemberCache();
-      })
-      .catch(error => { showNotice(errorMessage(error), 'error'); });
+    if (!confirm('Ngừng hoạt động thành viên này?')) return;
+    callApi('deleteThanhVien', {id: id}).then(() => { showPage('members'); loadMembers(); });
   }
   function reactivateMember(id) {
-    if (!confirm('Bạn muốn kích hoạt lại thành viên này?')) return;
-    callApi('reactivateThanhVien', {id: id})
-      .then(result => {
-        if (result && result.success === false) { showNotice('Không thể kích hoạt lại thành viên.', 'error'); return; }
-        showNotice('Đã kích hoạt lại thành viên.', 'success');
-        showPage('members'); loadMembers();
-        initTreeMemberCache();
-      })
-      .catch(error => { showNotice(errorMessage(error), 'error'); });
-  }
-
-  // ==========================================================
-  // CAY GIA PHA - FRONTEND
-  // ==========================================================
-  function showTreeNotice(message, type) {
-    const el = document.getElementById('treeNotice');
-    if (!el) return;
-    el.className = 'notice ' + (type || 'info');
-    el.textContent = message || '';
-  }
-
-  function normalizeTreeSearchResult(result) {
-    if (Array.isArray(result)) return result;
-    if (result && Array.isArray(result.data)) return result.data;
-    if (result && Array.isArray(result.results)) return result.results;
-    if (result && Array.isArray(result.thanhVien)) return result.thanhVien;
-    return [];
-  }
-
-  function initTreeMemberCache() {
-    showTreeNotice('Đang nạp danh sách thành viên vào bộ nhớ...', 'info');
-    callApi('getThanhVienList', { status: '' })
-      .then(result => {
-        const rawList = normalizeTreeSearchResult(result);
-        treeMemberCache = rawList.map(function(person) {
-          return {
-            id: person.ID_THANHVIEN || person.ID_THANH_VIEN || person.MA_THANHVIEN || person.ID || '',
-            name: person.HO_TEN || person.TEN_THANH_VIEN || person.TEN || person.HOTEN || '',
-            year: person.NAM_SINH || yearFromDate(person.NGAY_SINH) || '',
-            raw: person
-          };
-        }).filter(function(p) { return p.id && p.name; });
-
-        updateTreeDatalist('');
-        if (treeMemberCache.length > 0) {
-          showTreeNotice('Đã nạp thành công ' + treeMemberCache.length + ' thành viên vào bộ nhớ tạm. Bạn có thể chọn tên.', 'success');
-        } else {
-          showTreeNotice('Không tìm thấy dữ liệu thành viên nào trong bảng. Hãy kiểm tra lại trang Quản lý thành viên.', 'error');
-        }
-      })
-      .catch(error => {
-        showTreeNotice('Lỗi nạp danh sách thành viên: ' + errorMessage(error), 'error');
-      });
-  }
-
-  function searchTreeMembers() {
-    const input = document.getElementById('treeMemberSearch');
-    const keyword = input.value.trim().toLowerCase();
-    const cleanKeyword = keyword.replace(/\s*\(\d{4}\).*$/, '').trim();
-
-    if (!treeMemberCache.length) {
-      initTreeMemberCache();
-      return;
-    }
-    updateTreeDatalist(cleanKeyword);
-  }
-
-  function updateTreeDatalist(keyword) {
-    const datalist = document.getElementById('treeMemberOptions');
-    const filtered = treeMemberCache.filter(function(item) {
-      return !keyword || item.name.toLowerCase().includes(keyword);
-    });
-
-    datalist.innerHTML = filtered.map(function(item) {
-      const label = item.name + (item.year ? ' (' + item.year + ')' : '');
-      return '<option value="' + escapeHtml(label) + '"></option>';
-    }).join('');
-
-    if (keyword && filtered.length > 0) {
-      showTreeNotice('Tìm thấy ' + filtered.length + ' kết quả phù hợp.', 'info');
-    } else if (keyword) {
-      showTreeNotice('Không tìm thấy thành viên khớp với từ khóa.', 'error');
-    }
-  }
-
-  function findTreeMemberId() {
-    const inputVal = document.getElementById('treeMemberSearch').value.trim();
-    if (!inputVal) return '';
-    const cleanInputName = inputVal.replace(/\s*\(\d{4}\).*$/, '').trim().toLowerCase();
-
-    const found = treeMemberCache.find(function(item) {
-      const label = (item.name + (item.year ? ' (' + item.year + ')' : '')).toLowerCase();
-      return label === inputVal.toLowerCase() || item.name.toLowerCase() === cleanInputName;
-    });
-
-    if (found) return found.id;
-
-    const matched = treeMemberCache.find(function(item) {
-      return item.name.toLowerCase().includes(cleanInputName);
-    });
-
-    return matched ? matched.id : '';
-  }
-
-  function selectTreeRoot() {
-    let id = findTreeMemberId();
-    if (!id && treeMemberCache.length === 0) {
-      showTreeNotice('Bộ nhớ tạm đang trống. Đang thử tải lại danh sách...', 'info');
-      initTreeMemberCache();
-      return;
-    }
-    if (!id) {
-      showTreeNotice('Vui lòng chọn chính xác tên thành viên từ danh sách gợi ý.', 'error');
-      return;
-    }
-    currentTreeRootId = id;
-    loadFamilyTree();
-  }
-
-  function loadFamilyTree() {
-    if (!currentTreeRootId) {
-      showTreeNotice('Bạn chưa chọn thành viên làm gốc.', 'error');
-      return;
-    }
-    const content = document.getElementById('treeContent');
-    content.innerHTML = '<div class="loading">Đang xây dựng cây gia phả...</div>';
-    const scope = document.getElementById('treeScope').value;
-
-    callApi('getCayGiaPha', { rootId: currentTreeRootId, options: { scope: scope, maxDepth: 20, includeSpouses: true } })
-      .then(result => {
-        if (!result || result.success === false || !result.data) {
-          content.innerHTML = '<div class="empty"><div class="empty-icon">🌳</div><h3>Chưa tạo được cây gia phả</h3><p>Kiểm tra kết quả trả về từ getCayGiaPha().</p></div>';
-          showTreeNotice(result && result.message ? result.message : 'Không nhận được dữ liệu cây gia phả hợp lệ.', 'error');
-          return;
-        }
-        currentTreeData = result.data;
-        renderFamilyTree(result.data);
-        showTreeNotice('Đã tải cây gia phả thành công.', 'success');
-      })
-      .catch(error => {
-        content.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><h3>Không tải được cây gia phả</h3><p>' + escapeHtml(errorMessage(error)) + '</p></div>';
-        showTreeNotice('Lỗi getCayGiaPha(): ' + errorMessage(error), 'error');
-      });
-  }
-
-  function getTreeGenerationName(generation) {
-    if (generation === 0) return 'Thế hệ gốc';
-    if (generation < 0) return 'Thế hệ tổ tiên thứ ' + Math.abs(generation);
-    return 'Thế hệ hậu duệ thứ ' + generation;
-  }
-
-  function getTreeMemberName(id, memberMap) {
-    const person = memberMap[id];
-    return person ? treePersonName(person) : 'Không xác định (' + (id || 'thiếu mã') + ')';
-  }
-
-  function renderTreePerson(person) {
-    const id = treePersonId(person);
-    const isRoot = person.IS_ROOT === true || String(person.IS_ROOT).toLowerCase() === 'true' || id === currentTreeRootId;
-    const rootClass = isRoot ? 'root' : '';
-    const years = [
-      person.NAM_SINH || yearFromDate(person.NGAY_SINH),
-      person.NAM_MAT || yearFromDate(person.NGAY_MAT)
-    ].filter(Boolean);
-    const life = years.length ? years.join(' – ') : 'Chưa cập nhật';
-    const gender = person.GIOI_TINH || 'Chưa cập nhật';
-    const genderIcon = gender === 'Nam' ? '👨' : gender === 'Nữ' ? '👩' : '👤';
-    const place = person.QUE_QUAN || 'Chưa cập nhật';
-    const inactive = person.IS_INACTIVE || person.TRANG_THAI === 'NGUNG_HOAT_DONG';
-    return `
-      <div class="tree-person ${rootClass}">
-        <div class="tree-person-name">
-          ${genderIcon} ${escapeHtml(treePersonName(person) || 'Chưa có họ tên')}
-          ${isRoot ? '<span class="tree-root-label">GỐC</span>' : ''}
-        </div>
-        <div class="tree-person-meta tree-person-meta-compact">
-          <span>${escapeHtml(life)}</span><span class="tree-meta-gender"> · ${escapeHtml(gender)}</span>
-          ${inactive ? '<span class="tree-inactive"> · Ngừng hoạt động</span>' : ''}
-        </div>
-        <div class="tree-person-meta tree-person-meta-extra">
-          Mã: ${escapeHtml(id || '—')}<br>Quê quán: ${escapeHtml(place)}
-        </div>
-        <div class="tree-person-actions">
-          ${id ? `<button class="btn btn-secondary" onclick="changeTreeRoot('${escapeJs(id)}')">Chọn làm gốc</button>
-          <button class="btn btn-secondary" onclick="viewMember('${escapeJs(id)}')">Chi tiết</button>` : ''}
-        </div>
-      </div>`;
-  }
-
-  function changeTreeRoot(id) {
-    if (!id) return;
-    currentTreeRootId = id;
-    let person = treeMemberCache.find(function(item) { return treePersonId(item) === id; });
-    if (!person && currentTreeData && Array.isArray(currentTreeData.nodes)) {
-      person = currentTreeData.nodes.find(function(item) { return treePersonId(item) === id; });
-    }
-    if (person) {
-      const name = treePersonName(person);
-      const year = person.NAM_SINH || yearFromDate(person.NGAY_SINH);
-      document.getElementById('treeMemberSearch').value = name + (year ? ' (' + year + ')' : '');
-    } else {
-      document.getElementById('treeMemberSearch').value = '';
-    }
-    loadFamilyTree();
-  }
-
-  function getValidMarriageYear(item) {
-    if (!item) return '';
-    const rawYear = String(item.NAM_KET_HON == null ? '' : item.NAM_KET_HON).trim();
-    if (/^\d{3,4}$/.test(rawYear)) {
-      const n = Number(rawYear);
-      if (n >= 1000 && n <= new Date().getFullYear() + 1) return String(n);
-    }
-    const rawDate = item.NGAY_KET_HON;
-    let dateYear = '';
-    if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
-      dateYear = String(rawDate.getFullYear());
-    } else {
-      const dateText = String(rawDate == null ? '' : rawDate).trim();
-      const iso = dateText.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-      const dmy = dateText.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-      if (iso) dateYear = iso[1];
-      else if (dmy) dateYear = dmy[3];
-    }
-    if (dateYear) {
-      const n = Number(dateYear);
-      if (n >= 1000 && n <= new Date().getFullYear() + 1) return String(n);
-    }
-    return '';
-  }
-
-  function treeIsBloodline(person, spouseIds) {
-    const flag = person && person.IS_BLOODLINE;
-    if (flag === true || String(flag).toLowerCase() === 'true') return true;
-    if (flag === false || String(flag).toLowerCase() === 'false') return false;
-
-    const id = treePersonId(person);
-    if (id && spouseIds && spouseIds[id]) return false;
-
-    const raw = person ? person.GENERATION : null;
-    const legacy = person ? person.THE_HE : null;
-    const generation = raw !== null && raw !== undefined && raw !== '' ? raw : legacy;
-    return generation !== null && generation !== undefined && generation !== '' && Number.isFinite(Number(generation));
-  }
-
-  function treeGetRelationFields(item) {
-    const parentId = String(item.ID_CHA_ME || item.ID_PHU_HUYNH || item.ID_PARENT || '').trim();
-    const childId = String(item.ID_CON || item.ID_THANHVIEN_CON || item.ID_CHILD || '').trim();
-    const role = String(item.VAI_TRO_CHA_ME || item.VAI_TRO || '').trim().toUpperCase();
-    return { parentId: parentId, childId: childId, role: role };
-  }
-
-  function treeGetMarriagePair(item) {
-    const a = String(item.ID_VO_CHONG_1 || item.ID_THANHVIEN_1 || item.ID_NGUOI_1 || item.ID_CHONG || '').trim();
-    const b = String(item.ID_VO_CHONG_2 || item.ID_THANHVIEN_2 || item.ID_NGUOI_2 || item.ID_VO || '').trim();
-    return a && b ? [a, b] : [];
-  }
-
-  function renderFamilyTree(data) {
-    const content = document.getElementById('treeContent');
-    const nodes = Array.isArray(data.nodes) ? data.nodes : (Array.isArray(data.members) ? data.members : []);
-    const relations = Array.isArray(data.relationships) ? data.relationships : (Array.isArray(data.relations) ? data.relations : []);
-    const marriages = Array.isArray(data.marriages) ? data.marriages : (Array.isArray(data.honNhans) ? data.honNhans : []);
-    const summary = data.summary || {};
-    if (!nodes.length) {
-      content.innerHTML = '<div class="empty"><div class="empty-icon">🌳</div><h3>Nhánh gia phả chưa có dữ liệu</h3><p>Hàm getCayGiaPha() chưa trả về danh sách nodes/thành viên.</p></div>';
-      return;
-    }
-
-    const memberMap = {};
-    nodes.forEach(function(person) {
-      const id = treePersonId(person);
-      if (id) memberMap[id] = person;
-    });
-
-    const spouseIds = {};
-    marriages.forEach(function(item) {
-      const pair = treeGetMarriagePair(item);
-      if (pair.length === 2) {
-        spouseIds[pair[0]] = true;
-        spouseIds[pair[1]] = true;
-      }
-    });
-
-    const bloodlineNodes = nodes.filter(function(person) { return treeIsBloodline(person, spouseIds); });
-    const spouseNodes = nodes.filter(function(person) { return !treeIsBloodline(person, spouseIds); });
-    const generations = {};
-    bloodlineNodes.forEach(function(person) {
-      const raw = person.GENERATION != null ? person.GENERATION : person.THE_HE;
-      const gen = Number(raw);
-      if (!Number.isFinite(gen)) return;
-      if (!generations[gen]) generations[gen] = [];
-      generations[gen].push(person);
-    });
-
-    const genKeys = Object.keys(generations).map(Number).sort(function(a, b) { return a - b; });
-    let generationsHtml = '';
-    genKeys.forEach(function(gen) {
-      const people = generations[gen];
-      generationsHtml += `<section class="tree-generation">
-        <div class="tree-generation-title">${escapeHtml(getTreeGenerationName(gen))}
-          <span class="muted">(${people.length} thành viên huyết thống)</span></div>
-        <div class="tree-person-grid">${people.map(renderTreePerson).join('')}</div>
-      </section>`;
-    });
-
-    const stats = `<div class="tree-summary">
-      <div class="tree-stat"><strong>${summary.bloodlineCount != null ? summary.bloodlineCount : bloodlineNodes.length}</strong><span>Thành viên huyết thống</span></div>
-      <div class="tree-stat"><strong>${summary.spouseCount != null ? summary.spouseCount : spouseNodes.length}</strong><span>Thành viên phối ngẫu</span></div>
-      <div class="tree-stat"><strong>${summary.relationshipCount != null ? summary.relationshipCount : relations.length}</strong><span>Quan hệ cha mẹ – con</span></div>
-      <div class="tree-stat"><strong>${summary.marriageCount != null ? summary.marriageCount : marriages.length}</strong><span>Quan hệ hôn nhân</span></div>
-      <div class="tree-stat"><strong>${summary.ancestorCount != null ? summary.ancestorCount : '—'}</strong><span>Tổ tiên</span></div>
-      <div class="tree-stat"><strong>${summary.descendantCount != null ? summary.descendantCount : '—'}</strong><span>Hậu duệ</span></div>
-    </div>`;
-
-    const spouseHtml = spouseNodes.length ? `<section class="tree-generation tree-spouse-generation">
-      <div class="tree-generation-title">💍 Thành viên phối ngẫu
-        <span class="muted">(${spouseNodes.length} người · không tính vào thế hệ huyết thống)</span></div>
-      <div class="tree-person-grid">${spouseNodes.map(renderTreePerson).join('')}</div>
-    </section>` : '';
-
-    const marriageHtml = marriages.length ? `<section class="tree-relationship"><h3>💍 Quan hệ hôn nhân</h3>
-      ${marriages.map(function(item) {
-        const pair = treeGetMarriagePair(item);
-        const id1 = pair[0] || '';
-        const id2 = pair[1] || '';
-        const name1 = item.TEN_NGUOI_1 || item.HO_TEN_1 || getTreeMemberName(id1, memberMap);
-        const name2 = item.TEN_NGUOI_2 || item.HO_TEN_2 || getTreeMemberName(id2, memberMap);
-        const year = getValidMarriageYear(item);
-        const dateText = year ? 'Năm ' + year : 'Chưa rõ thời gian';
-        const status = item.TRANG_THAI === 'DA_KET_THUC' ? 'Đã kết thúc' :
-          (item.TRANG_THAI === 'NGUNG_HOAT_DONG' || item.TRANG_THAI === 'DA_XOA') ? 'Ngừng hoạt động' : 'Đang hoạt động';
-        return `<div class="tree-link-item">💍 <strong>${escapeHtml(name1)}</strong><span class="tree-link-arrow"> ↔ </span><strong>${escapeHtml(name2)}</strong><br><span class="muted">${escapeHtml(dateText)} · ${escapeHtml(status)}</span></div>`;
-      }).join('')}
-    </section>` : '';
-
-    const relationHtml = relations.length ? `<section class="tree-relationship"><h3>👨‍👩‍👧 Quan hệ cha mẹ – con</h3>
-      ${relations.map(function(item) {
-        const rel = treeGetRelationFields(item);
-        const parent = memberMap[rel.parentId];
-        const child = memberMap[rel.childId];
-        const parentName = item.TEN_CHA_ME || item.HO_TEN_CHA_ME || (parent && treePersonName(parent));
-        const childName = item.TEN_CON || item.HO_TEN_CON || (child && treePersonName(child));
-        if (!parentName || !childName) return '';
-        const role = rel.role === 'CHA' ? 'Cha' : rel.role === 'ME' ? 'Mẹ' : (rel.role || 'Cha/mẹ');
-        return `<div class="tree-link-item"><strong>${escapeHtml(parentName)}</strong><span class="tree-link-arrow"> → </span><strong>${escapeHtml(childName)}</strong><span class="muted"> (${escapeHtml(role)})</span>${item.THU_TU_CON ? `<span class="muted"> · Con thứ ${escapeHtml(item.THU_TU_CON)}</span>` : ''}</div>`;
-      }).join('')}
-    </section>` : '';
-
-    const rootPerson = memberMap[currentTreeRootId];
-    const rootName = data.rootName || data.tenGoc || (rootPerson && treePersonName(rootPerson)) || 'Thành viên đã chọn';
-    const scopeElement = document.getElementById('treeScope');
-    const scopeLabel = data.scope || (scopeElement && scopeElement.selectedOptions && scopeElement.selectedOptions[0] ? scopeElement.selectedOptions[0].textContent : '');
-
-    const spouseByBloodlineId = {};
-    marriages.forEach(function(item) {
-      const pair = treeGetMarriagePair(item);
-      if (pair.length !== 2) return;
-      const a = memberMap[pair[0]], b = memberMap[pair[1]];
-      if (!a || !b) return;
-      const aBlood = treeIsBloodline(a, spouseIds);
-      const bBlood = treeIsBloodline(b, spouseIds);
-      if (aBlood && !bBlood) {
-        if (!spouseByBloodlineId[pair[0]]) spouseByBloodlineId[pair[0]] = [];
-        if (!spouseByBloodlineId[pair[0]].some(function(x) { return treePersonId(x) === pair[1]; })) spouseByBloodlineId[pair[0]].push(b);
-      } else if (bBlood && !aBlood) {
-        if (!spouseByBloodlineId[pair[1]]) spouseByBloodlineId[pair[1]] = [];
-        if (!spouseByBloodlineId[pair[1]].some(function(x) { return treePersonId(x) === pair[0]; })) spouseByBloodlineId[pair[1]].push(a);
-      }
-    });
-
-    const bloodlineMap = {};
-    bloodlineNodes.forEach(function(person) {
-      const id = treePersonId(person);
-      if (id) bloodlineMap[id] = person;
-    });
-    const parentOf = {};
-    const childrenOf = {};
-    const relationEdges = [];
-    relations.forEach(function(item) {
-      const rel = treeGetRelationFields(item);
-      if (!rel.parentId || !rel.childId || rel.parentId === rel.childId) return;
-      if (!bloodlineMap[rel.parentId] || !bloodlineMap[rel.childId]) return;
-      relationEdges.push({ parentId: rel.parentId, childId: rel.childId, role: rel.role, order: Number(item.THU_TU_CON) || 9999 });
-    });
-
-    relationEdges.sort(function(a, b) {
-      const roleRank = function(role) { return role === 'CHA' ? 0 : role === 'ME' ? 1 : 2; };
-      return roleRank(a.role) - roleRank(b.role) || a.order - b.order;
-    });
-    relationEdges.forEach(function(edge) {
-      if (parentOf[edge.childId]) return;
-      parentOf[edge.childId] = edge.parentId;
-      if (!childrenOf[edge.parentId]) childrenOf[edge.parentId] = [];
-      if (childrenOf[edge.parentId].indexOf(edge.childId) < 0) childrenOf[edge.parentId].push(edge.childId);
-    });
-    Object.keys(childrenOf).forEach(function(parentId) {
-      childrenOf[parentId].sort(function(a, b) {
-        const pa = bloodlineMap[a], pb = bloodlineMap[b];
-        const oa = Number((relationEdges.find(function(e) { return e.parentId === parentId && e.childId === a; }) || {}).order) || 9999;
-        const ob = Number((relationEdges.find(function(e) { return e.parentId === parentId && e.childId === b; }) || {}).order) || 9999;
-        return oa - ob || String(treePersonName(pa)).localeCompare(String(treePersonName(pb)), 'vi');
-      });
-    });
-
-    function familyPersonHtml(person, hasChildren) {
-      const id = treePersonId(person);
-      const linkedSpouses = spouseByBloodlineId[id] || [];
-      const spouseCards = linkedSpouses.map(function(spouse) {
-        return `<div class="tree-family-spouse"><div class="tree-spouse-caption">💍 Vợ / chồng</div>${renderTreePerson(spouse)}</div>`;
-      }).join('');
-      const collapse = hasChildren
-        ? `<button type="button" class="tree-branch-toggle" title="Thu gọn hoặc mở rộng hậu duệ" aria-label="Thu gọn nhánh" onclick="toggleTreeBranch(this)">−</button>`
-        : '';
-      return `<div class="tree-family-person-wrap">${collapse}<div class="tree-family-person-main">${renderTreePerson(person)}</div>${spouseCards ? `<div class="tree-family-spouses">${spouseCards}</div>` : ''}</div>`;
-    }
-
-    const renderedBloodline = {};
-    function renderFamilyBranch(id, path) {
-      const person = bloodlineMap[id];
-      if (!person || renderedBloodline[id] || path[id]) return '';
-      renderedBloodline[id] = true;
-      const nextPath = Object.assign({}, path);
-      nextPath[id] = true;
-      const childIds = (childrenOf[id] || []).filter(function(childId) { return !renderedBloodline[childId] && !nextPath[childId]; });
-      const childHtml = childIds.map(function(childId) { return renderFamilyBranch(childId, nextPath); }).filter(Boolean).join('');
-      return `<li class="tree-family-node" data-member-id="${escapeJs(id)}">${familyPersonHtml(person, !!childHtml)}${childHtml ? `<ul class="tree-family-children">${childHtml}</ul>` : ''}</li>`;
-    }
-
-    const treeRoots = bloodlineNodes.filter(function(person) {
-      const id = treePersonId(person);
-      return id && !parentOf[id];
-    }).sort(function(a, b) {
-      const ga = Number(a.GENERATION != null ? a.GENERATION : a.THE_HE) || 0;
-      const gb = Number(b.GENERATION != null ? b.GENERATION : b.THE_HE) || 0;
-      return ga - gb || String(treePersonName(a)).localeCompare(String(treePersonName(b)), 'vi');
-    });
-
-    let chartHtml = '';
-    const selectedRootId = currentTreeRootId && bloodlineMap[currentTreeRootId]
-      ? currentTreeRootId
-      : (treeRoots.length ? treePersonId(treeRoots[0]) : (rootPerson ? treePersonId(rootPerson) : ''));
-    if (selectedRootId && bloodlineMap[selectedRootId]) {
-      chartHtml += `<ul class="tree-family-tree tree-family-tree-primary">${renderFamilyBranch(selectedRootId, {})}</ul>`;
-    }
-
-    bloodlineNodes.forEach(function(person) {
-      const id = treePersonId(person);
-      if (id && !renderedBloodline[id]) {
-        chartHtml += `<div class="tree-family-disconnected"><div class="tree-chart-note">Nhánh riêng chưa nối vào gốc đang chọn bằng quan hệ đã lưu</div><ul class="tree-family-tree">${renderFamilyBranch(id, {})}</ul></div>`;
-      }
-    });
-    if (!chartHtml) {
-      chartHtml = `<div class="tree-family-card tree-family-single">${renderTreePerson(rootPerson || bloodlineNodes[0])}<p class="muted">Chưa có quan hệ cha mẹ – con trong phạm vi đang chọn.</p></div>`;
-    }
-
-    content.innerHTML = `
-      <div class="info-card"><h3>🌳 Cây gia phả: ${escapeHtml(rootName)}</h3>
-        <div class="hint">Phạm vi: ${escapeHtml(scopeLabel)} · Giới hạn tìm kiếm: ${escapeHtml(data.maxDepth || 20)} thế hệ</div>
-        <div class="hint">Các thế hệ chỉ tính thành viên huyết thống. Phối ngẫu được hiển thị riêng; sơ đồ gia đình chỉ ghép cha/mẹ khi có quan hệ cha mẹ – con thực tế.</div>
-      </div>
-      ${stats}
-      <div class="tree-view-toolbar">
-        <button type="button" class="btn ${currentTreeViewMode === 'list' ? 'btn-primary' : 'btn-secondary'}" onclick="setTreeViewMode('list')">☷ Xem danh sách thế hệ</button>
-        <button type="button" class="btn ${currentTreeViewMode === 'chart' ? 'btn-primary' : 'btn-secondary'}" onclick="setTreeViewMode('chart')">🌳 Xem sơ đồ gia đình</button>
-      </div>
-      <div id="treeListView" style="display:${currentTreeViewMode === 'list' ? 'block' : 'none'}">
-        ${generationsHtml}${spouseHtml}${marriageHtml}${relationHtml}
-      </div>
-      <div id="treeChartView" style="display:${currentTreeViewMode === 'chart' ? 'block' : 'none'}">
-        <div class="tree-chart-note">Sơ đồ sử dụng quan hệ cha/mẹ – con đã lưu. Chọn nút −/+ để thu gọn nhánh; kéo nền để di chuyển; dùng nút phóng to hoặc con lăn chuột để thay đổi tỷ lệ.</div>
-        <div class="tree-pdf-help">Xuất PDF sẽ mở hộp thoại in của trình duyệt. Chọn “Save as PDF / Lưu thành PDF”, khổ giấy A3 ngang và bật in nền nếu muốn giữ màu.</div>
-        <div class="tree-zoom-toolbar">
-          <button type="button" class="btn btn-secondary" onclick="treeZoomBy(0.15)" title="Phóng to">＋</button>
-          <button type="button" class="btn btn-secondary" onclick="treeZoomBy(-0.15)" title="Thu nhỏ">－</button>
-          <button type="button" class="btn btn-secondary" onclick="treeSetZoom(1)">100%</button>
-          <button type="button" class="btn btn-primary" onclick="treeFitToScreen()">Vừa màn hình</button>
-          <span id="treeZoomLabel" class="tree-zoom-label">100%</span>
-          <button type="button" class="btn btn-secondary" onclick="treeExpandAll(true)">Mở tất cả</button>
-          <button type="button" class="btn btn-secondary" onclick="treeExpandAll(false)">Thu gọn cấp dưới</button>
-          <button type="button" class="btn btn-primary" onclick="treeOpenPdfDialog()">📄 Xuất PDF</button>
-        </div>
-        <div id="treeChartViewport" class="tree-chart-viewport">
-          <div id="treeChartCanvas" class="tree-chart-canvas"><div class="tree-chart-stage tree-family-tree-stage">${chartHtml}</div></div>
-        </div>
-      </div>
-      <div id="treePdfDialog" class="tree-pdf-dialog" style="display:none" role="dialog" aria-modal="true" aria-labelledby="treePdfDialogTitle">
-        <div class="tree-pdf-dialog-card">
-          <div class="tree-pdf-dialog-head"><h3 id="treePdfDialogTitle">📄 Xuất PDF cây gia phả</h3><button type="button" class="btn btn-secondary" onclick="treeClosePdfDialog()">Đóng</button></div>
-          <p class="muted">Chọn phạm vi xuất. PDF được dàn trang độc lập, không phụ thuộc mức thu phóng trên màn hình.</p>
-          <label for="treePdfScope">Phạm vi gia phả</label>
-          <select id="treePdfScope" class="form-control" onchange="treeUpdatePdfOptions()">
-            <option value="all">Toàn bộ cây đang xem</option>
-            <option value="branch">Một nhánh hậu duệ</option>
-            <option value="chi">Một chi họ</option>
-          </select>
-          <div id="treePdfTargetWrap" style="display:none;margin-top:12px">
-            <label id="treePdfTargetLabel" for="treePdfTarget">Chọn thành viên</label>
-            <select id="treePdfTarget" class="form-control"></select>
-          </div>
-          <div class="tree-pdf-options">
-            <div><label for="treePdfPaper">Khổ giấy</label><select id="treePdfPaper" class="form-control"><option value="A3">A3 – khuyến nghị</option><option value="A2">A2 – cây rộng</option><option value="A1">A1 – cây rất rộng</option><option value="A4">A4 – nhánh nhỏ</option></select></div>
-            <div><label for="treePdfOrientation">Hướng giấy</label><select id="treePdfOrientation" class="form-control"><option value="landscape">Ngang</option><option value="portrait">Dọc</option></select></div>
-          </div>
-          <p id="treePdfDialogHint" class="tree-pdf-dialog-hint">Toàn bộ cây đang hiển thị sẽ được đưa vào bản in.</p>
-          <div class="tree-pdf-dialog-actions"><button type="button" class="btn btn-secondary" onclick="treeClosePdfDialog()">Hủy</button><button type="button" class="btn btn-primary" onclick="treePreparePdf()">Tiếp tục xuất PDF</button></div>
-        </div>
-      </div>
-      <div id="treePdfPrintArea" aria-hidden="true"></div>`;
-    if (currentTreeViewMode === 'chart') {
-      initTreeChartNavigation();
-      setTimeout(treeFitToScreen, 0);
-    }
-  }
-
-  var treeZoomScale = 1;
-  var treePdfChiOptions = null;
-
-  function treeOpenPdfDialog() {
-    var dialog = document.getElementById('treePdfDialog');
-    if (!dialog) return;
-    dialog.style.display = 'flex';
-    treeUpdatePdfOptions();
-  }
-  function treeClosePdfDialog() {
-    var dialog = document.getElementById('treePdfDialog');
-    if (dialog) dialog.style.display = 'none';
-  }
-  function treeUpdatePdfOptions() {
-    var scopeEl = document.getElementById('treePdfScope');
-    var wrap = document.getElementById('treePdfTargetWrap');
-    var label = document.getElementById('treePdfTargetLabel');
-    var select = document.getElementById('treePdfTarget');
-    var hint = document.getElementById('treePdfDialogHint');
-    if (!scopeEl || !wrap || !select) return;
-    var scope = scopeEl.value;
-    if (scope === 'all') {
-      wrap.style.display = 'none';
-      hint.textContent = 'Xuất toàn bộ sơ đồ đang xem, gồm các nhánh rời được hiển thị riêng. Nếu cây quá rộng, nên chọn A2 hoặc A1.';
-      return;
-    }
-    wrap.style.display = 'block';
-    if (scope === 'branch') {
-      label.textContent = 'Chọn thành viên bắt đầu nhánh';
-      var nodes = (currentTreeData && currentTreeData.nodes) || [];
-      select.innerHTML = nodes.filter(function(person) { return treePersonId(person) && person.IS_SPOUSE_ONLY !== true && String(person.IS_SPOUSE_ONLY).toLowerCase() !== 'true'; }).map(function(person) {
-        var id = treePersonId(person);
-        var years = person.NAM_SINH ? ' (' + person.NAM_SINH + ')' : '';
-        return '<option value="' + escapeHtml(id) + '">' + escapeHtml(treePersonName(person) + years) + '</option>';
-      }).join('');
-      hint.textContent = 'Xuất người được chọn và toàn bộ hậu duệ theo quan hệ cha mẹ – con đang có trong sơ đồ.';
-      return;
-    }
-    label.textContent = 'Chọn chi họ';
-    hint.textContent = 'Đang tải danh sách chi họ từ dữ liệu CHIHO và THANHVIEN_CHIHO...';
-    select.innerHTML = '<option value="">Đang tải danh sách chi...</option>';
-    if (treePdfChiOptions) { treeFillChiSelect(); return; }
-
-    callApi('getCayGiaPhaExportOptions', { rootId: currentTreeRootId })
-      .then(result => {
-        treePdfChiOptions = result && result.success ? (result.chi || []) : [];
-        treeFillChiSelect();
-      })
-      .catch(err => {
-        select.innerHTML = '<option value="">Lỗi tải danh sách chi</option>';
-        hint.textContent = 'Không tải được danh sách chi: ' + errorMessage(err);
-      });
-  }
-  function treeFillChiSelect() {
-    var select = document.getElementById('treePdfTarget');
-    var hint = document.getElementById('treePdfDialogHint');
-    if (!select) return;
-    var options = treePdfChiOptions || [];
-    select.innerHTML = options.length ? options.map(function(chi) {
-      return '<option value="' + escapeHtml(chi.ID_CHIHO) + '">' + escapeHtml(chi.TEN_CHI || chi.MA_CHI || 'Chi chưa đặt tên') + '</option>';
-    }).join('') : '<option value="">Chưa có dữ liệu chi họ</option>';
-    if (hint && !options.length) hint.textContent = 'Chưa tìm thấy chi họ được khai báo trong bảng CHIHO của dòng họ này.';
-  }
-  function treeFindNodeByMemberId(stage, id) {
-    if (!stage || !id) return null;
-    return Array.from(stage.querySelectorAll('.tree-family-node[data-member-id]')).find(function(node) {
-      return node.getAttribute('data-member-id') === String(id);
-    }) || null;
-  }
-  function treeCloneBranch(node) {
-    if (!node) return null;
-    var clone = node.cloneNode(true);
-    clone.classList.remove('is-collapsed');
-    clone.querySelectorAll('.tree-branch-toggle, .tree-person-actions').forEach(function(el) { el.remove(); });
-    clone.querySelectorAll('.is-collapsed').forEach(function(el) { el.classList.remove('is-collapsed'); });
-    return clone;
-  }
-  function treePreparePdf() {
-    var scope = document.getElementById('treePdfScope').value;
-    var paper = document.getElementById('treePdfPaper').value;
-    var orientation = document.getElementById('treePdfOrientation').value;
-    var sourceStage = document.querySelector('#treeChartCanvas .tree-chart-stage');
-    var printArea = document.getElementById('treePdfPrintArea');
-    if (!sourceStage || !printArea) { alert('Không tìm thấy sơ đồ gia phả để xuất.'); return; }
-    var title = 'CÂY GIA PHẢ';
-    var subtitle = '';
-    var content;
-    if (scope === 'all') {
-      content = sourceStage.cloneNode(true);
-      title = 'SƠ ĐỒ TOÀN BỘ DÒNG HỌ';
-      subtitle = 'Phạm vi: toàn bộ sơ đồ đang hiển thị · Ngày xuất: ' + new Date().toLocaleDateString('vi-VN');
-    } else {
-      var targetId = document.getElementById('treePdfTarget').value;
-      if (!targetId) { alert('Vui lòng chọn thành viên hoặc chi họ.'); return; }
-      var personNode = treeFindNodeByMemberId(sourceStage, targetId);
-      if (scope === 'branch') {
-        if (!personNode) { alert('Thành viên này không nằm trong sơ đồ hiện tại. Hãy tải lại cây với phạm vi phù hợp.'); return; }
-        var person = (currentTreeData.nodes || []).find(function(item) { return treePersonId(item) === targetId; });
-        title = 'SƠ ĐỒ NHÁNH HẬU DUỆ';
-        subtitle = (person ? treePersonName(person) : '') + ' · Ngày xuất: ' + new Date().toLocaleDateString('vi-VN');
-      } else {
-        var chi = (treePdfChiOptions || []).find(function(item) { return String(item.ID_CHIHO) === String(targetId); });
-        if (!chi) { alert('Không tìm thấy thông tin chi họ đã chọn.'); return; }
-        var leaderId = chi.ID_TRUONG_CHI || (chi.memberIds && chi.memberIds[0]) || '';
-        personNode = treeFindNodeByMemberId(sourceStage, leaderId);
-        if (!personNode && chi.memberIds) {
-          for (var i = 0; i < chi.memberIds.length && !personNode; i++) personNode = treeFindNodeByMemberId(sourceStage, chi.memberIds[i]);
-        }
-        if (!personNode) { alert('Không tìm thấy thành viên thuộc chi này trong sơ đồ hiện tại. Hãy đổi gốc hoặc phạm vi xem cây rồi thử lại.'); return; }
-        title = 'SƠ ĐỒ CHI ' + String(chi.TEN_CHI || chi.MA_CHI || '').toLocaleUpperCase('vi-VN');
-        subtitle = 'Trưởng chi: ' + (chi.truongChiName || 'Chưa cập nhật') + ' · Ngày xuất: ' + new Date().toLocaleDateString('vi-VN');
-      }
-      var cloned = treeCloneBranch(personNode);
-      content = document.createElement('div');
-      content.className = 'tree-family-tree-stage';
-      var ul = document.createElement('ul');
-      ul.className = 'tree-family-tree';
-      ul.appendChild(cloned);
-      content.appendChild(ul);
-    }
-    printArea.innerHTML = '';
-    var heading = document.createElement('h1'); heading.className = 'tree-pdf-print-title'; heading.textContent = title;
-    var sub = document.createElement('p'); sub.className = 'tree-pdf-print-subtitle'; sub.textContent = subtitle;
-    printArea.appendChild(heading); printArea.appendChild(sub); printArea.appendChild(content);
-    printArea.style.display = 'block';
-    treeClosePdfDialog();
-    var pageStyle = document.getElementById('treePdfDynamicPageStyle');
-    if (!pageStyle) { pageStyle = document.createElement('style'); pageStyle.id = 'treePdfDynamicPageStyle'; document.head.appendChild(pageStyle); }
-    pageStyle.textContent = '@media print { @page { size: ' + paper + ' ' + orientation + '; margin: 10mm; } #page-tree, #page-tree * { visibility:hidden !important; } #treePdfPrintArea, #treePdfPrintArea * { visibility:visible !important; } #treePdfPrintArea { display:block !important; position:absolute; left:0; top:0; width:100%; background:#fff; } #treePdfPrintArea .tree-family-tree-stage { overflow:visible !important; padding:3mm !important; } #treePdfPrintArea .tree-family-tree, #treePdfPrintArea .tree-family-children { width:max-content !important; min-width:0 !important; } #treePdfPrintArea .tree-family-person-wrap { width:42mm !important; max-width:none !important; } #treePdfPrintArea .tree-person { break-inside:avoid; box-shadow:none !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; } #treePdfPrintArea .tree-family-node, #treePdfPrintArea .tree-family-children { break-inside:avoid; } #treePdfPrintArea .tree-branch-toggle, #treePdfPrintArea .tree-person-actions { display:none !important; } }';
-    var cleanup = function() { printArea.style.display = 'none'; printArea.innerHTML = ''; window.removeEventListener('afterprint', cleanup); };
-    window.addEventListener('afterprint', cleanup);
-    setTimeout(function() { window.print(); }, 250);
-  }
-
-  function treeApplyZoom() {
-    var canvas = document.getElementById('treeChartCanvas');
-    var label = document.getElementById('treeZoomLabel');
-    if (!canvas) return;
-    canvas.style.transform = 'scale(' + treeZoomScale + ')';
-    if (label) label.textContent = Math.round(treeZoomScale * 100) + '%';
-  }
-  function treeSetZoom(value) {
-    treeZoomScale = Math.max(0.25, Math.min(2.5, Number(value) || 1));
-    treeApplyZoom();
-  }
-  function treeZoomBy(delta) { treeSetZoom(treeZoomScale + delta); }
-  function treeFitToScreen() {
-    var viewport = document.getElementById('treeChartViewport');
-    var canvas = document.getElementById('treeChartCanvas');
-    if (!viewport || !canvas) return;
-    treeZoomScale = 1;
-    canvas.style.transform = 'none';
-    var contentWidth = Math.max(canvas.scrollWidth, 1);
-    var contentHeight = Math.max(canvas.scrollHeight, 1);
-    var scaleX = (viewport.clientWidth - 28) / contentWidth;
-    var scaleY = (viewport.clientHeight - 28) / contentHeight;
-    treeZoomScale = Math.max(0.25, Math.min(1, scaleX, scaleY));
-    treeApplyZoom();
-    viewport.scrollLeft = 0;
-    viewport.scrollTop = 0;
-  }
-  function toggleTreeBranch(button) {
-    var node = button && button.closest('.tree-family-node');
-    if (!node) return;
-    var collapsed = node.classList.toggle('is-collapsed');
-    button.textContent = collapsed ? '+' : '−';
-    button.setAttribute('aria-label', collapsed ? 'Mở rộng nhánh' : 'Thu gọn nhánh');
-  }
-  function treeExpandAll(collapse) {
-    var viewport = document.getElementById('treeChartViewport');
-    if (!viewport) return;
-    viewport.querySelectorAll('.tree-family-node').forEach(function(node) {
-      var button = node.querySelector(':scope > .tree-family-person-wrap > .tree-branch-toggle');
-      if (!button) return;
-      node.classList.toggle('is-collapsed', !!collapse);
-      button.textContent = collapse ? '+' : '−';
-      button.setAttribute('aria-label', collapse ? 'Mở rộng nhánh' : 'Thu gọn nhánh');
-    });
-  }
-  function initTreeChartNavigation() {
-    var viewport = document.getElementById('treeChartViewport');
-    if (!viewport || viewport.dataset.navigationReady) return;
-    viewport.dataset.navigationReady = '1';
-    var dragging = false, startX = 0, startY = 0, scrollX = 0, scrollY = 0;
-    viewport.addEventListener('pointerdown', function(event) {
-      if (event.target.closest('button, a, input')) return;
-      dragging = true; startX = event.clientX; startY = event.clientY;
-      scrollX = viewport.scrollLeft; scrollY = viewport.scrollTop;
-      viewport.classList.add('is-dragging');
-      try { viewport.setPointerCapture(event.pointerId); } catch (e) {}
-    });
-    viewport.addEventListener('pointermove', function(event) {
-      if (!dragging) return;
-      viewport.scrollLeft = scrollX - (event.clientX - startX);
-      viewport.scrollTop = scrollY - (event.clientY - startY);
-    });
-    function stopDrag() { dragging = false; viewport.classList.remove('is-dragging'); }
-    viewport.addEventListener('pointerup', stopDrag);
-    viewport.addEventListener('pointercancel', stopDrag);
-    viewport.addEventListener('wheel', function(event) {
-      if (!event.ctrlKey && !event.metaKey) return;
-      event.preventDefault();
-      treeZoomBy(event.deltaY < 0 ? 0.08 : -0.08);
-    }, { passive:false });
-  }
-
-  function setTreeViewMode(mode) {
-    currentTreeViewMode = mode === 'chart' ? 'chart' : 'list';
-    if (currentTreeData) renderFamilyTree(currentTreeData);
-  }
-
-  // ==========================================================
-  // QUAN HE GIA DINH: CHA ME - CON VA HON NHAN
-  // ==========================================================
-  let familyRelationMembers = [];
-  let editingQuanHeId = '';
-  let editingHonNhanId = '';
-  let isSavingFamilyRelation = false;
-
-  function showRelationNotice(message, type) {
-    const el = document.getElementById('relationNotice');
-    if (!el) return;
-    el.className = 'notice ' + (type || 'info');
-    el.textContent = message || '';
-  }
-
-  function hideRelationNotice() {
-    const el = document.getElementById('relationNotice');
-    if (!el) return;
-    el.className = 'notice';
-    el.textContent = '';
-  }
-
-  function switchRelationTab(tab) {
-    const parent = tab === 'parent';
-    document.getElementById('relationParentPanel').style.display = parent ? 'block' : 'none';
-    document.getElementById('relationMarriagePanel').style.display = parent ? 'none' : 'block';
-    document.getElementById('relationTabParent').className = 'btn ' + (parent ? 'btn-primary' : 'btn-secondary');
-    document.getElementById('relationTabMarriage').className = 'btn ' + (parent ? 'btn-secondary' : 'btn-primary');
-    hideRelationNotice();
-  }
-
-  function loadAllFamilyRelations() {
-    loadFamilyRelationMembers(function() {
-      loadParentRelations();
-      loadMarriages();
-    });
-  }
-
-  function loadFamilyRelationMembers(callback) {
-    callApi('getThanhVienList', {status: ''})
-      .then(result => {
-        if (!result || result.success === false || !Array.isArray(result.data)) {
-          showRelationNotice('Không tải được danh sách thành viên để lập quan hệ.', 'error');
-          return;
-        }
-        familyRelationMembers = result.data.filter(function(p) {
-          return normalizeRelationGender(p.TRANG_THAI) !== 'NGUNG_HOAT_DONG' && normalizeRelationGender(p.TRANG_THAI) !== 'DA_XOA' && normalizeRelationGender(p.TRANG_THAI) !== 'INACTIVE';
-        });
-        fillFamilyRelationMemberSelects();
-        if (typeof callback === 'function') callback();
-      })
-      .catch(error => {
-        showRelationNotice('Lỗi tải thành viên: ' + errorMessage(error), 'error');
-      });
-  }
-
-  function normalizeRelationGender(value) {
-    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').trim().toUpperCase();
-  }
-
-  function fillFamilyRelationMemberSelects() {
-    const configs = [
-      { id: 'relationChild', filter: function(p) { return true; } },
-      { id: 'relationFather', filter: function(p) { return normalizeRelationGender(p.GIOI_TINH) === 'NAM'; } },
-      { id: 'relationMother', filter: function(p) { return normalizeRelationGender(p.GIOI_TINH) === 'NU'; } },
-      { id: 'marriagePerson1', filter: function(p) { return true; } },
-      { id: 'marriagePerson2', filter: function(p) { return true; } }
-    ];
-
-    configs.forEach(function(config) {
-      const select = document.getElementById(config.id);
-      if (!select) return;
-      const oldValue = select.value;
-      const firstOption = select.options[0] ? select.options[0].outerHTML : '<option value="">-- Chọn thành viên --</option>';
-      select.innerHTML = firstOption;
-
-      familyRelationMembers.filter(config.filter).forEach(function(person) {
-        const option = document.createElement('option');
-        option.value = person.ID_THANHVIEN;
-        option.textContent = (person.HO_TEN || 'Chưa có họ tên') + (person.GIOI_TINH ? ' - ' + person.GIOI_TINH : '');
-        select.appendChild(option);
-      });
-      if (oldValue) select.value = oldValue;
-    });
-  }
-
-  function resetParentRelationForm() {
-    document.getElementById('parentRelationForm').reset();
-    document.querySelector('#parentRelationForm [name="ID_QUANHE"]').value = '';
-    editingQuanHeId = '';
-    document.getElementById('parentFormTitle').textContent = '＋ Thêm quan hệ cha mẹ – con';
-    document.getElementById('saveParentRelationButton').textContent = '💾 Lưu quan hệ';
-    document.getElementById('relationFather').disabled = false;
-    document.getElementById('relationMother').disabled = false;
-    hideRelationNotice();
-  }
-
-  function loadParentRelations() {
-    const status = document.getElementById('parentRelationStatus').value;
-    const content = document.getElementById('parentRelationsContent');
-    content.innerHTML = '<div class="loading">Đang tải quan hệ cha mẹ – con...</div>';
-
-    callApi('getQuanHeList', {status: status})
-      .then(result => {
-        if (!result || result.success === false || !Array.isArray(result.data)) {
-          content.innerHTML = '<div class="empty">Không nhận được danh sách quan hệ hợp lệ.</div>';
-          return;
-        }
-        renderParentRelations(result.data);
-      })
-      .catch(error => {
-        content.innerHTML = '<div class="empty">' + escapeHtml(errorMessage(error)) + '</div>';
-      });
-  }
-
-  function renderParentRelations(records) {
-    const content = document.getElementById('parentRelationsContent');
-    if (!records.length) {
-      content.innerHTML = '<div class="empty"><div class="empty-icon">👨‍👩‍👧</div><h3>Chưa có quan hệ phù hợp</h3><p>Hãy thêm quan hệ cha mẹ – con bằng biểu mẫu phía trên.</p></div>';
-      return;
-    }
-
-    const rows = records.map(function(item, index) {
-      const inactive = item.TRANG_THAI === 'NGUNG_HOAT_DONG';
-      return `<tr>
-        <td>${index + 1}</td>
-        <td><strong>${escapeHtml(item.TEN_CHA_ME || 'Chưa rõ')}</strong></td>
-        <td>${escapeHtml(item.VAI_TRO_CHA_ME === 'CHA' ? 'Cha' : item.VAI_TRO_CHA_ME === 'ME' ? 'Mẹ' : item.VAI_TRO_CHA_ME || '')}</td>
-        <td><strong>${escapeHtml(item.TEN_CON || 'Chưa rõ')}</strong></td>
-        <td>${escapeHtml(item.THU_TU_CON || '—')}</td>
-        <td>${escapeHtml(formatDate(item.NGAY_XAC_LAP) || '—')}</td>
-        <td>${inactive ? statusLabel('NGUNG_HOAT_DONG') : statusLabel('DANG_HOAT_DONG')}</td>
-        <td>
-          ${inactive
-            ? `<button class="btn btn-primary btn-small" onclick="reactivateFamilyRelation('${escapeJs(item.ID_QUANHE)}')">Kích hoạt</button>`
-            : `<button class="btn btn-secondary btn-small" onclick="editFamilyRelation('${escapeJs(item.ID_QUANHE)}')">Sửa</button>
-               <button class="btn btn-danger btn-small" onclick="deactivateFamilyRelation('${escapeJs(item.ID_QUANHE)}')">Ngừng</button>`
-          }
-        </td>
-      </tr>`;
-    }).join('');
-
-    content.innerHTML = `
-      <div class="list-summary"><span>Tìm thấy <strong>${records.length}</strong> quan hệ</span></div>
-      <div class="table-wrap"><table><thead><tr><th>STT</th><th>Cha/mẹ</th><th>Vai trò</th><th>Người con</th><th>Thứ tự con</th><th>Ngày xác lập</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  }
-
-  function saveParentRelation(event) {
-    event.preventDefault();
-    if (isSavingFamilyRelation) return;
-    const form = document.getElementById('parentRelationForm');
-    if (!form.reportValidity()) return;
-
-    const childId = form.elements.ID_CON.value;
-    const fatherId = form.elements.ID_CHA.value;
-    const motherId = form.elements.ID_ME.value;
-    const date = form.elements.NGAY_XAC_LAP.value;
-    const note = form.elements.GHI_CHU.value.trim();
-
-    if (!childId) { showRelationNotice('Vui lòng chọn người con.', 'error'); return; }
-    if (!fatherId && !motherId) { showRelationNotice('Vui lòng chọn ít nhất người cha hoặc người mẹ.', 'error'); return; }
-    if (fatherId && fatherId === childId) { showRelationNotice('Người cha không thể đồng thời là người con.', 'error'); return; }
-    if (motherId && motherId === childId) { showRelationNotice('Người mẹ không thể đồng thời là người con.', 'error'); return; }
-    if (fatherId && motherId && fatherId === motherId) { showRelationNotice('Người cha và người mẹ không thể là cùng một thành viên.', 'error'); return; }
-
-    const button = document.getElementById('saveParentRelationButton');
-    isSavingFamilyRelation = true; button.disabled = true; button.textContent = 'Đang lưu...';
-
-    const finish = function() { isSavingFamilyRelation = false; button.disabled = false; button.textContent = editingQuanHeId ? '💾 Lưu thay đổi' : '💾 Lưu quan hệ'; };
-    const success = function(result) {
-      finish();
-      if (!result || result.success === false) { showRelationNotice(result && result.message ? result.message : 'Không thể lưu quan hệ.', 'error'); return; }
-      showRelationNotice(editingQuanHeId ? 'Đã cập nhật quan hệ thành công.' : 'Đã thêm quan hệ cha mẹ – con thành công.', 'success');
-      resetParentRelationForm(); loadParentRelations();
-    };
-    const failure = function(error) { finish(); showRelationNotice(errorMessage(error), 'error'); };
-
-    if (editingQuanHeId) {
-      const parentId = fatherId || motherId;
-      callApi('updateQuanHe', {id: editingQuanHeId, data: { ID_CHA_ME: parentId, ID_CON: childId, NGAY_XAC_LAP: date, GHI_CHU: note }})
-        .then(success).catch(failure);
-    } else {
-      callApi('createQuanHeChaMeDayDu', {data: { ID_CON: childId, ID_CHA: fatherId, ID_ME: motherId, NGAY_XAC_LAP: date, GHI_CHU: note }})
-        .then(success).catch(failure);
-    }
-  }
-
-  function editFamilyRelation(id) {
-    callApi('getQuanHeById', {id: id})
-      .then(result => {
-        if (!result || !result.data) { showRelationNotice('Không tìm thấy quan hệ cần sửa.', 'error'); return; }
-        const item = result.data;
-        resetParentRelationForm();
-        editingQuanHeId = item.ID_QUANHE;
-        document.querySelector('#parentRelationForm [name="ID_QUANHE"]').value = item.ID_QUANHE;
-        document.getElementById('relationChild').value = item.ID_CON;
-
-        if (item.VAI_TRO_CHA_ME === 'CHA') {
-          document.getElementById('relationFather').value = item.ID_CHA_ME;
-          document.getElementById('relationMother').value = '';
-        } else {
-          document.getElementById('relationMother').value = item.ID_CHA_ME;
-          document.getElementById('relationFather').value = '';
-        }
-
-        document.getElementById('relationFather').disabled = true;
-        document.getElementById('relationMother').disabled = true;
-        document.querySelector('#parentRelationForm [name="NGAY_XAC_LAP"]').value = toInputDate(item.NGAY_XAC_LAP);
-        document.querySelector('#parentRelationForm [name="GHI_CHU"]').value = item.GHI_CHU || '';
-        document.getElementById('parentFormTitle').textContent = '✎ Cập nhật quan hệ cha mẹ – con';
-        document.getElementById('saveParentRelationButton').textContent = '💾 Lưu thay đổi';
-        showRelationNotice('Đang chỉnh sửa quan hệ của ' + (item.TEN_CHA_ME || 'thành viên') + '.', 'info');
-        document.getElementById('parentRelationForm').scrollIntoView({behavior:'smooth'});
-      })
-      .catch(error => { showRelationNotice(errorMessage(error), 'error'); });
-  }
-
-  function deactivateFamilyRelation(id) {
-    if (!confirm('Bạn muốn ngừng quan hệ này? Dữ liệu sẽ được giữ lại trong Google Sheets.')) return;
-    callApi('deleteQuanHe', {id: id})
-      .then(result => {
-        if (result && result.success === false) { showRelationNotice(result.message || 'Không thể ngừng quan hệ.', 'error'); return; }
-        showRelationNotice('Đã ngừng quan hệ.', 'success');
-        loadParentRelations();
-      })
-      .catch(error => { showRelationNotice(errorMessage(error), 'error'); });
-  }
-
-  function reactivateFamilyRelation(id) {
-    if (!confirm('Bạn muốn kích hoạt lại quan hệ này?')) return;
-    callApi('reactivateQuanHe', {id: id})
-      .then(result => {
-        if (result && result.success === false) { showRelationNotice(result.message || 'Không thể kích hoạt quan hệ.', 'error'); return; }
-        showRelationNotice('Đã kích hoạt lại quan hệ.', 'success');
-        loadParentRelations();
-      })
-      .catch(error => { showRelationNotice(errorMessage(error), 'error'); });
-  }
-
-  function resetMarriageForm() {
-    document.getElementById('marriageForm').reset();
-    document.querySelector('#marriageForm [name="ID_HONNHAN"]').value = '';
-    editingHonNhanId = '';
-    document.getElementById('marriageFormTitle').textContent = '＋ Thêm quan hệ hôn nhân';
-    document.getElementById('saveMarriageButton').textContent = '💾 Lưu hôn nhân';
-    hideRelationNotice();
-  }
-
-  function loadMarriages() {
-    const status = document.getElementById('marriageStatusFilter').value;
-    const content = document.getElementById('marriagesContent');
-    content.innerHTML = '<div class="loading">Đang tải danh sách hôn nhân...</div>';
-
-    callApi('getHonNhanList', {status: status})
-      .then(result => {
-        if (!result || result.success === false || !Array.isArray(result.data)) {
-          content.innerHTML = '<div class="empty">Không nhận được danh sách hôn nhân hợp lệ.</div>';
-          return;
-        }
-        renderMarriages(result.data);
-      })
-      .catch(error => {
-        content.innerHTML = '<div class="empty">' + escapeHtml(errorMessage(error)) + '</div>';
-      });
-  }
-
-  function renderMarriages(records) {
-    const content = document.getElementById('marriagesContent');
-    if (!records.length) {
-      content.innerHTML = '<div class="empty"><div class="empty-icon">💍</div><h3>Chưa có quan hệ hôn nhân phù hợp</h3><p>Hãy thêm thông tin hôn nhân bằng biểu mẫu phía trên.</p></div>';
-      return;
-    }
-
-    const rows = records.map(function(item, index) {
-      const statusText = item.TRANG_THAI === 'DA_KET_THUC' ? 'Đã kết thúc' : (item.TRANG_THAI === 'NGUNG_HOAT_DONG' || item.TRANG_THAI === 'DA_XOA') ? 'Ngừng hoạt động' : 'Đang hoạt động';
-      const typeText = item.LOAI_HONNHAN === 'HOP_PHAP' ? 'Hợp pháp' : item.LOAI_HONNHAN === 'KHONG_DANG_KY' ? 'Không đăng ký' : 'Khác';
-      const year = item.NAM_KET_HON || yearFromDate(item.NGAY_KET_HON) || '—';
-      const inactive = item.TRANG_THAI === 'NGUNG_HOAT_DONG';
-      const ended = item.TRANG_THAI === 'DA_KET_THUC';
-      let actions = '';
-
-      if (inactive) {
-        actions = `<button class="btn btn-primary btn-small" onclick="reactivateMarriage('${escapeJs(item.ID_HONNHAN)}')">Kích hoạt</button>`;
-      } else {
-        actions = `<button class="btn btn-secondary btn-small" onclick="editMarriage('${escapeJs(item.ID_HONNHAN)}')">Sửa</button>`;
-        if (!ended) {
-          actions += `<button class="btn btn-secondary btn-small" onclick="endMarriage('${escapeJs(item.ID_HONNHAN)}')">Kết thúc</button>`;
-        }
-        actions += `<button class="btn btn-danger btn-small" onclick="deactivateMarriage('${escapeJs(item.ID_HONNHAN)}')">Ngừng</button>`;
-      }
-
-      return `<tr>
-        <td>${index + 1}</td>
-        <td><strong>${escapeHtml(item.TEN_VO_CHONG_1 || 'Chưa rõ')}</strong></td>
-        <td><strong>${escapeHtml(item.TEN_VO_CHONG_2 || 'Chưa rõ')}</strong></td>
-        <td>${escapeHtml(year)}</td>
-        <td>${escapeHtml(typeText)}</td>
-        <td>${escapeHtml(statusText)}</td>
-        <td>${actions}</td>
-      </tr>`;
-    }).join('');
-
-    content.innerHTML = `
-      <div class="list-summary"><span>Tìm thấy <strong>${records.length}</strong> bản ghi hôn nhân</span></div>
-      <div class="table-wrap"><table><thead><tr><th>STT</th><th>Người thứ nhất</th><th>Người thứ hai</th><th>Năm kết hôn</th><th>Loại hôn nhân</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  }
-
-  function saveMarriage(event) {
-    event.preventDefault();
-    if (isSavingFamilyRelation) return;
-    const form = document.getElementById('marriageForm');
-    if (!form.reportValidity()) return;
-
-    const id1 = form.elements.ID_VO_CHONG_1.value;
-    const id2 = form.elements.ID_VO_CHONG_2.value;
-    if (id1 === id2) { showRelationNotice('Hai người trong quan hệ hôn nhân phải là hai thành viên khác nhau.', 'error'); return; }
-
-    const data = {
-      ID_VO_CHONG_1: id1,
-      ID_VO_CHONG_2: id2,
-      NGAY_KET_HON: form.elements.NGAY_KET_HON.value,
-      NAM_KET_HON: form.elements.NAM_KET_HON.value,
-      NOI_KET_HON: form.elements.NOI_KET_HON.value.trim(),
-      LOAI_HONNHAN: form.elements.LOAI_HONNHAN.value,
-      GHI_CHU: form.elements.GHI_CHU.value.trim()
-    };
-
-    const button = document.getElementById('saveMarriageButton');
-    isSavingFamilyRelation = true; button.disabled = true; button.textContent = 'Đang lưu...';
-
-    const finish = function() { isSavingFamilyRelation = false; button.disabled = false; button.textContent = editingHonNhanId ? '💾 Lưu thay đổi' : '💾 Lưu hôn nhân'; };
-    const success = function(result) {
-      finish();
-      if (!result || result.success === false) { showRelationNotice(result && result.message ? result.message : 'Không thể lưu hôn nhân.', 'error'); return; }
-      showRelationNotice(editingHonNhanId ? 'Đã cập nhật hôn nhân thành công.' : 'Đã thêm hôn nhân thành công.', 'success');
-      resetMarriageForm(); loadMarriages();
-    };
-    const failure = function(error) { finish(); showRelationNotice(errorMessage(error), 'error'); };
-
-    if (editingHonNhanId) {
-      callApi('updateHonNhan', {id: editingHonNhanId, data: data}).then(success).catch(failure);
-    } else {
-      callApi('createHonNhan', {data: data}).then(success).catch(failure);
-    }
-  }
-
-  function editMarriage(id) {
-    callApi('getHonNhanById', {id: id})
-      .then(result => {
-        if (!result || !result.data) { showRelationNotice('Không tìm thấy thông tin hôn nhân.', 'error'); return; }
-        const item = result.data;
-        resetMarriageForm();
-        editingHonNhanId = item.ID_HONNHAN;
-        const form = document.getElementById('marriageForm');
-        form.elements.ID_HONNHAN.value = item.ID_HONNHAN || '';
-        form.elements.ID_VO_CHONG_1.value = item.ID_VO_CHONG_1 || '';
-        form.elements.ID_VO_CHONG_2.value = item.ID_VO_CHONG_2 || '';
-        form.elements.NGAY_KET_HON.value = toInputDate(item.NGAY_KET_HON);
-        form.elements.NAM_KET_HON.value = item.NAM_KET_HON || '';
-        form.elements.NOI_KET_HON.value = item.NOI_KET_HON || '';
-        form.elements.LOAI_HONNHAN.value = item.LOAI_HONNHAN || 'HOP_PHAP';
-        form.elements.GHI_CHU.value = item.GHI_CHU || '';
-        document.getElementById('marriageFormTitle').textContent = '✎ Cập nhật thông tin hôn nhân';
-        document.getElementById('saveMarriageButton').textContent = '💾 Lưu thay đổi';
-        showRelationNotice('Đang chỉnh sửa thông tin hôn nhân.', 'info');
-        form.scrollIntoView({behavior:'smooth'});
-      })
-      .catch(error => { showRelationNotice(errorMessage(error), 'error'); });
-  }
-
-  function endMarriage(id) {
-    const date = prompt('Nhập ngày kết thúc hôn nhân (YYYY-MM-DD). Để trống nếu dùng ngày hiện tại:');
-    if (date === null) return;
-    const cleanDate = date.trim();
-    if (cleanDate && (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate) || isNaN(Date.parse(cleanDate + 'T00:00:00')))) {
-      showRelationNotice('Ngày kết thúc phải có định dạng YYYY-MM-DD.', 'error');
-      return;
-    }
-    const reason = prompt('Nhập lý do kết thúc hôn nhân (có thể để trống):');
-    if (reason === null) return;
-
-    callApi('endHonNhan', {id: id, data: { NGAY_KET_THUC: cleanDate, LY_DO_KET_THUC: reason.trim() }})
-      .then(result => {
-        if (result && result.success === false) { showRelationNotice(result.message || 'Không thể kết thúc hôn nhân.', 'error'); return; }
-        showRelationNotice('Đã cập nhật trạng thái kết thúc hôn nhân.', 'success');
-        loadMarriages();
-      })
-      .catch(error => { showRelationNotice(errorMessage(error), 'error'); });
-  }
-
-  function deactivateMarriage(id) {
-    if (!confirm('Bạn muốn ngừng bản ghi hôn nhân này? Dữ liệu vẫn được giữ lại.')) return;
-    callApi('deleteHonNhan', {id: id})
-      .then(result => {
-        if (result && result.success === false) { showRelationNotice(result.message || 'Không thể ngừng bản ghi hôn nhân.', 'error'); return; }
-        showRelationNotice('Đã ngừng bản ghi hôn nhân.', 'success');
-        loadMarriages();
-      })
-      .catch(error => { showRelationNotice(errorMessage(error), 'error'); });
-  }
-
-  function reactivateMarriage(id) {
-    if (!confirm('Bạn muốn kích hoạt lại bản ghi hôn nhân này?')) return;
-    callApi('reactivateHonNhan', {id: id})
-      .then(result => {
-        if (result && result.success === false) { showRelationNotice(result.message || 'Không thể kích hoạt hôn nhân.', 'error'); return; }
-        showRelationNotice('Đã kích hoạt lại bản ghi hôn nhân.', 'success');
-        loadMarriages();
-      })
-      .catch(error => { showRelationNotice(errorMessage(error), 'error'); });
-  }
-
-  /* NGAY GIO / NHAC EMAIL */
-  function showAnniversaryNotice(message, type) {
-    const el = document.getElementById('anniversaryNotice'); if(!el) return;
-    el.className = 'notice ' + (type || 'info'); el.textContent = message || '';
-  }
-  function loadAnniversaryMembers() {
-    callApi('getThanhVienList', {status: ''})
-      .then(result => {
-        const people = normalizeTreeSearchResult(result);
-        const opts = '<option value="">-- Chọn thành viên --</option>' + people.map(function(p) {
-          const id = p.ID_THANHVIEN || p.ID_THANH_VIEN || p.ID || '', name = p.HO_TEN || p.TEN_THANH_VIEN || '';
-          return id ? `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>` : '';
-        }).join('');
-        document.getElementById('anniversaryMember').innerHTML = opts;
-        document.getElementById('anniversaryContact').innerHTML = '<option value="">-- Chọn người phụ trách --</option>' + opts.replace('<option value="">-- Chọn thành viên --</option>', '');
-      })
-      .catch(e => showAnniversaryNotice(errorMessage(e), 'error'));
-  }
-  function loadAnniversaries() {
-    const box = document.getElementById('anniversaryList'); box.innerHTML = '<div class="loading">Đang tải ngày giỗ...</div>';
-    callApi('getAnniversaryList')
-      .then(res => {
-        if (!res || res.success === false) { box.innerHTML = '<div class="empty">Không tải được dữ liệu ngày giỗ.</div>'; showAnniversaryNotice(res&&res.message||'Lỗi tải ngày giỗ.','error'); return; }
-        const rows = res.data || [];
-        if (!rows.length) { box.innerHTML = '<div class="empty"><div class="empty-icon">🕯️</div><h3>Chưa có ngày giỗ</h3><p>Thêm ngày giỗ ở biểu mẫu phía trên.</p></div>'; return; }
-        box.innerHTML = rows.map(function(x) {
-          const d = x.SO_NGAY_CON_LAI, countdown = d === 0 ? 'Hôm nay' : d > 0 ? 'Còn ' + d + ' ngày' : 'Đã qua';
-          return `<div class="anniv-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
-            <div><div style="font-weight:bold;color:#315b45">${escapeHtml(x.TEN_THANHVIEN||x.TEN_SUKIEN||'Ngày giỗ')}</div><div class="hint">${escapeHtml(x.TEN_SUKIEN||'Ngày giỗ hằng năm')} · Âm lịch ${escapeHtml(x.NGAY_AM_LICH)}/${escapeHtml(x.THANG_AM_LICH)}${String(x.THANG_NHUAN)==='1'?' nhuận':''}</div></div>
-            <div style="text-align:right"><div class="anniv-date">${escapeHtml(x.NGAY_DUONG_HIEN_THI||'')}</div><span class="anniv-tag">${escapeHtml(countdown)}</span></div></div>
-            <div class="hint" style="margin-top:8px">Địa điểm: ${escapeHtml(x.DIA_DIEM||'Chưa cập nhật')} · Nhắc trước: ${escapeHtml(x.SO_NGAY_NHAC_TRUOC||0)} ngày</div>
-            <div class="detail-actions"><button class="btn btn-secondary btn-small" onclick="editAnniversary('${escapeJs(x.ID_SUKIEN)}')">✎ Sửa</button><button class="btn btn-danger btn-small" onclick="deactivateAnniversary('${escapeJs(x.ID_SUKIEN)}')">Ngừng theo dõi</button></div></div>`;
-        }).join('');
-      })
-      .catch(e => { box.innerHTML = '<div class="empty">Lỗi: '+escapeHtml(errorMessage(e))+'</div>'; showAnniversaryNotice(errorMessage(e),'error'); });
-  }
-  function resetAnniversaryForm() {
-    const f = document.getElementById('anniversaryForm'); f.reset(); f.elements.ID_SUKIEN.value = '';
-    document.getElementById('anniversaryFormTitle').textContent = '＋ Thêm ngày giỗ thành viên';
-  }
-  function saveAnniversaryForm(event) {
-    event.preventDefault();
-    const f = document.getElementById('anniversaryForm'), data = Object.fromEntries(new FormData(f).entries()), btn = document.getElementById('saveAnniversaryButton'); btn.disabled = true;
-    callApi('saveAnniversary', {data: data})
-      .then(res => {
-        btn.disabled = false;
-        if (!res || res.success === false) { showAnniversaryNotice(res&&res.message||'Không lưu được ngày giỗ.','error'); return; }
-        showAnniversaryNotice('Đã lưu thông tin ngày giỗ.','success'); resetAnniversaryForm(); loadAnniversaries();
-      })
-      .catch(e => { btn.disabled = false; showAnniversaryNotice(errorMessage(e),'error'); });
-  }
-  function editAnniversary(id) {
-    callApi('getAnniversaryById', {id: id})
-      .then(res => {
-        if (!res || !res.data) { showAnniversaryNotice('Không tìm thấy ngày giỗ.','error'); return; }
-        const f = document.getElementById('anniversaryForm'), x = res.data;
-        Object.keys(x).forEach(k => { if(f.elements[k]) f.elements[k].value = x[k]==null?'':x[k]; });
-        document.getElementById('anniversaryFormTitle').textContent = '✎ Cập nhật ngày giỗ';
-        f.scrollIntoView({behavior:'smooth', block:'start'});
-      })
-      .catch(e => showAnniversaryNotice(errorMessage(e),'error'));
-  }
-  function deactivateAnniversary(id) {
-    if (!confirm('Ngừng theo dõi ngày giỗ này? Dữ liệu sẽ không bị xóa.')) return;
-    callApi('deactivateAnniversary', {id: id})
-      .then(() => { showAnniversaryNotice('Đã ngừng theo dõi ngày giỗ.','success'); loadAnniversaries(); })
-      .catch(e => showAnniversaryNotice(errorMessage(e),'error'));
-  }
-  function installAnniversaryReminder() {
-    if (!confirm('Bật tác vụ tự kiểm tra ngày giỗ mỗi ngày và gửi email nhắc theo cấu hình?')) return;
-    callApi('installAnniversaryReminderTrigger')
-      .then(res => showAnniversaryNotice(res&&res.message||'Đã cài đặt tác vụ nhắc ngày giỗ.','success'))
-      .catch(e => showAnniversaryNotice(errorMessage(e),'error'));
-  }
-
-  /* LỊCH NGÀY GIỖ THEO NĂM */
-  var annivCalEvents = [];
-  var annivCalSelectedDate = '';
-
-  function annivCalEscape(value) {
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  function annivCalChangeYear(step) {
-    var input = document.getElementById('annivCalendarYear');
-    if (!input) return;
-    var year = Number(input.value) || new Date().getFullYear();
-    year += step;
-    if (year < 1900 || year > 2200) return;
-    input.value = year;
-    loadAnniversaryCalendar();
-  }
-
-  function loadAnniversaryCalendar() {
-    var input = document.getElementById('annivCalendarYear');
-    var status = document.getElementById('annivCalendarStatus');
-    var months = document.getElementById('annivCalendarMonths');
-    var detail = document.getElementById('annivCalendarDetail');
-    if (!input || !status || !months) return;
-
-    var year = Number(input.value);
-    if (!Number.isInteger(year) || year < 1900 || year > 2200) {
-      status.textContent = 'Vui lòng chọn năm từ 1900 đến 2200.';
-      return;
-    }
-
-    status.textContent = 'Đang tải lịch năm ' + year + '...';
-    months.innerHTML = '';
-    detail.style.display = 'none';
-
-    callApi('getAnniversaryCalendar', {year: year})
-      .then(res => {
-        if (!res || res.success !== true) {
-          status.textContent = 'Không tải được lịch ngày giỗ.';
-          return;
-        }
-        annivCalEvents = res.data || [];
-        annivCalSelectedDate = '';
-        status.textContent = 'Năm ' + year + ': có ' + annivCalEvents.length + ' ngày giỗ.';
-        annivCalRender(year);
-      })
-      .catch(err => {
-        status.textContent = 'Lỗi tải lịch: ' + errorMessage(err);
-      });
-  }
-
-  function annivCalRender(year) {
-    var container = document.getElementById('annivCalendarMonths');
-    if (!container) return;
-    var weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-    var html = '';
-
-    for (var month = 0; month < 12; month++) {
-      var firstDay = new Date(year, month, 1);
-      var totalDays = new Date(year, month + 1, 0).getDate();
-      var offset = (firstDay.getDay() + 6) % 7;
-
-      html += '<div class="anniv-month">';
-      html += '<div class="anniv-month-title">THÁNG ' + (month + 1) + '</div>';
-      html += '<div class="anniv-month-grid">';
-
-      weekdays.forEach(function(day) {
-        html += '<div class="anniv-weekday">' + day + '</div>';
-      });
-
-      for (var blank = 0; blank < offset; blank++) {
-        html += '<div></div>';
-      }
-
-      for (var day = 1; day <= totalDays; day++) {
-        var dateKey = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-        var count = annivCalEvents.filter(function(e) { return e.NGAY_DUONG === dateKey; }).length;
-        var hasEvent = count > 0;
-        var selected = annivCalSelectedDate === dateKey;
-
-        html += '<button type="button" class="anniv-day' + (hasEvent ? ' has-event' : '') + (selected ? ' selected' : '') + '"' +
-          (hasEvent ? ' onclick="annivCalShowDetail(\'' + dateKey + \')"' : ' disabled') + '>';
-        html += day;
-        if (hasEvent) {
-          html += '<span class="anniv-day-count">🕯️' + (count > 1 ? ' ' + count : '') + '</span>';
-        }
-        html += '</button>';
-      }
-      html += '</div></div>';
-    }
-    container.innerHTML = html;
-  }
-
-  function annivCalShowDetail(dateKey) {
-    var detail = document.getElementById('annivCalendarDetail');
-    var yearInput = document.getElementById('annivCalendarYear');
-    if (!detail) return;
-
-    var selected = annivCalEvents.filter(function(e) { return e.NGAY_DUONG === dateKey; });
-    if (!selected.length) return;
-
-    annivCalSelectedDate = dateKey;
-    var parts = dateKey.split('-');
-    var displayDate = parts[2] + '/' + parts[1] + '/' + parts[0];
-
-    var html = '<h3>🕯️ Ngày giỗ ngày ' + annivCalEscape(displayDate) + '</h3>';
-    selected.forEach(function(e) {
-      html += '<div class="anniv-detail-item">';
-      html += '<div class="anniv-detail-name">' + annivCalEscape(e.TEN_THANHVIEN || 'Chưa rõ thành viên') + '</div>';
-      html += '<div class="anniv-detail-meta">';
-      html += '<b>Sự kiện:</b> ' + annivCalEscape(e.TEN_SUKIEN) + '<br>';
-      html += '<b>Âm lịch:</b> ' + annivCalEscape(e.NGAY_AM_LICH) + '/' + annivCalEscape(e.THANG_AM_LICH) + (String(e.THANG_NHUAN) === '1' ? ' nhuận' : '') + '<br>';
-      html += '<b>Địa điểm:</b> ' + annivCalEscape(e.DIA_DIEM || 'Chưa cập nhật') + '<br>';
-      html += '<b>Người phụ trách:</b> ' + annivCalEscape(e.TEN_NGUOI_PHU_TRACH || 'Chưa cập nhật') + '<br>';
-      if (e.SO_DIEN_THOAI) html += '<b>Điện thoại:</b> ' + annivCalEscape(e.SO_DIEN_THOAI) + '<br>';
-      if (e.NOI_DUNG) html += '<b>Nội dung:</b> ' + annivCalEscape(e.NOI_DUNG) + '<br>';
-      html += '<b>Nhắc trước:</b> ' + annivCalEscape(e.SO_NGAY_NHAC_TRUOC) + ' ngày';
-      html += '</div></div>';
-    });
-
-    detail.innerHTML = html;
-    detail.style.display = 'block';
-
-    var year = yearInput ? Number(yearInput.value) : new Date().getFullYear();
-    annivCalRender(year);
-    detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-
-  function annivCalInit() {
-    var input = document.getElementById('annivCalendarYear');
-    if (!input) return;
-    if (!input.value) {
-      input.value = new Date().getFullYear();
-    }
-  }
-  annivCalInit();
+    callApi('reactivateThanhVien', {id: id}).then(() => { showPage('members'); loadMembers(); });
+  }
+
+  // Khởi tạo các phân hệ phụ (Cây gia phả, Quan hệ, Ngày giỗ, Bản đồ mộ)
+  function initTreeMemberCache() {}
+  function loadFamilyTree() {}
+  function loadAllFamilyRelations() {}
+  function loadParentRelations() {}
+  function loadMarriages() {}
+  function loadAnniversaries() {}
+  function loadAnniversaryMembers() {}
+  function loadAnniversaryCalendar() {}
 
-  // ==========================================================
-  // BẢN ĐỒ SỐ MỘ (GRAVEYARD MAP)
-  // ==========================================================
   function loadGraveyardList() {
     const content = document.getElementById('graveyardContent');
     if (!content) return;
-    content.innerHTML = '<div class="loading">Đang tải danh sách phần mộ...</div>';
-    
-    const options = {
-      search: document.getElementById('graveSearch').value.trim(),
-      status: document.getElementById('graveStatusFilter').value
-    };
-
-    callApi('getPhanMoList', options)
+    content.innerHTML = '<div class="loading">Đang tải phần mộ...</div>';
+    callApi('getPhanMoList', {search: document.getElementById('graveSearch').value.trim()})
       .then(res => {
-        if (!res || !res.success || !Array.isArray(res.data)) {
-          content.innerHTML = '<div class="empty">Không tải được dữ liệu phần mộ.</div>';
-          return;
-        }
-        allGravesCache = res.data;
-        renderGraveyardTable(res.data);
+        if (!res || !res.success) { content.innerHTML = '<div class="empty">Không tải được phần mộ.</div>'; return; }
+        allGravesCache = res.data || [];
+        renderGraveyardTable(allGravesCache);
         initGraveyardMap();
-      })
-      .catch(err => {
-        content.innerHTML = '<div class="empty">Lỗi: ' + escapeHtml(errorMessage(err)) + '</div>';
       });
   }
-
   function renderGraveyardTable(records) {
     const content = document.getElementById('graveyardContent');
-    if (!records.length) {
-      content.innerHTML = '<div class="empty"><div class="empty-icon">🗺️</div><h3>Chưa có phần mộ nào</h3><p>Hãy thêm thông tin phần mộ mới.</p></div>';
-      return;
-    }
-
-    const rows = records.map(function(item, index) {
-      const inactive = item.TRANG_THAI === 'NGUNG_HOAT_DONG';
-      const googleMapsUrl = item.LATITUDE && item.LONGITUDE ? `https://www.google.com/maps/search/?api=1&query=${item.LATITUDE},${item.LONGITUDE}` : '#';
-      
-      return `<tr>
-        <td>${index + 1}</td>
-        <td><strong>${escapeHtml(item.TEN_THANHVIEN || 'Chưa rõ thành viên')}</strong></td>
-        <td>${escapeHtml(item.TEN_KHU_MO || '—')}<br><small class="muted">${escapeHtml(item.KHU_VUC || '')}</small></td>
-        <td>${escapeHtml(item.VI_TRI_MO || item.DIA_CHI || '—')}</td>
-        <td>${item.LATITUDE && item.LONGITUDE ? `<a href="${googleMapsUrl}" target="_blank" class="btn btn-secondary btn-small">🗺️ Chỉ đường</a>` : 'Chưa có GPS'}</td>
-        <td>${inactive ? statusLabel('NGUNG_HOAT_DONG') : statusLabel('DANG_HOAT_DONG')}</td>
-        <td>
-          <button class="btn btn-secondary btn-small" onclick="editGraveyard('${escapeJs(item.ID_PHANMO)}')">Sửa</button>
-          <button class="btn btn-danger btn-small" onclick="deleteGraveyard('${escapeJs(item.ID_PHANMO)}')">Ngừng</button>
-        </td>
-      </tr>`;
-    }).join('');
-
-    content.innerHTML = `
-      <div class="list-summary"><span>Tìm thấy <strong>${records.length}</strong> phần mộ</span></div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>STT</th><th>Thành viên</th><th>Khu mộ / Nghĩa trang</th><th>Vị trí chi tiết</th><th>Bản đồ GPS</th><th>Trạng thái</th><th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
+    if (!records.length) { content.innerHTML = '<div class="empty">Chưa có phần mộ nào.</div>'; return; }
+    content.innerHTML = '<table><thead><tr><th>Tên</th><th>Khu mộ</th><th>GPS</th></tr></thead><tbody>' +
+      records.map(r => '<tr><td>' + escapeHtml(r.TEN_THANHVIEN) + '</td><td>' + escapeHtml(r.TEN_KHU_MO) + '</td><td>' + (r.LATITUDE || 'Chưa có') + '</td></tr>').join('') +
+      '</tbody></table>';
   }
-
   function initGraveyardMap() {
     const container = document.getElementById('graveyardMap');
     if (!container) return;
-
-    if (graveyardMapInstance) {
-      graveyardMapInstance.remove();
-      graveyardMapInstance = null;
-    }
-
-    let defaultLat = 21.0285, defaultLng = 105.8542, defaultZoom = 6;
-    const validGrave = allGravesCache.find(g => g.LATITUDE && g.LONGITUDE);
-    if (validGrave) {
-      defaultLat = parseFloat(validGrave.LATITUDE);
-      defaultLng = parseFloat(validGrave.LONGITUDE);
-      defaultZoom = 13;
-    }
-
-    graveyardMapInstance = L.map('graveyardMap').setView([defaultLat, defaultLng], defaultZoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(graveyardMapInstance);
-
-    allGravesCache.forEach(function(g) {
-      if (g.LATITUDE && g.LONGITUDE) {
-        const lat = parseFloat(g.LATITUDE);
-        const lng = parseFloat(g.LONGITUDE);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          const marker = L.marker([lat, lng]).addTo(graveyardMapInstance);
-          const navUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-          marker.bindPopup(`
-            <div style="min-width: 180px;">
-              <strong style="color: #245c45; font-size: 14px;">${escapeHtml(g.TEN_THANHVIEN || 'Phần mộ')}</strong><br>
-              <b>Khu mộ:</b> ${escapeHtml(g.TEN_KHU_MO || '—')}<br>
-              <b>Vị trí:</b> ${escapeHtml(g.VI_TRI_MO || g.KHU_VUC || '—')}<br><br>
-              <a href="${navUrl}" target="_blank" style="background:#245c45; color:#fff; padding:5px 10px; border-radius:4px; text-decoration:none; display:inline-block; font-size:12px;">🗺️ Mở Google Maps</a>
-            </div>
-          `);
-        }
-      }
+    if (graveyardMapInstance) { graveyardMapInstance.remove(); graveyardMapInstance = null; }
+    graveyardMapInstance = L.map('graveyardMap').setView([21.0285, 105.8542], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(graveyardMapInstance);
+  }
+  function openNewGraveyardForm() { showPage('graveyard-form'); setTimeout(() => initPickerMap(), 300); }
+  function initPickerMap() {
+    if (pickerMapInstance) { pickerMapInstance.remove(); pickerMapInstance = null; }
+    pickerMapInstance = L.map('pickerMap').setView([21.0285, 105.8542], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(pickerMapInstance);
+    pickerMapInstance.on('click', e => {
+      document.getElementById('graveLat').value = e.latlng.lat.toFixed(6);
+      document.getElementById('graveLng').value = e.latlng.lng.toFixed(6);
+      if (pickerMarker) pickerMarker.setLatLng(e.latlng);
+      else pickerMarker = L.marker(e.latlng).addTo(pickerMapInstance);
     });
   }
-
-  function openNewGraveyardForm() {
-    document.getElementById('graveyardForm').reset();
-    document.querySelector('#graveyardForm [name="ID_PHANMO"]').value = '';
-    document.getElementById('graveFormTitle').textContent = 'Thêm phần mộ mới';
-    
-    callApi('getThanhVienList', {status: ''}).then(res => {
-      const list = normalizeTreeSearchResult(res);
-      const opts = '<option value="">-- Chọn thành viên --</option>' + list.map(p => {
-        const id = p.ID_THANHVIEN || p.ID;
-        return `<option value="${escapeHtml(id)}">${escapeHtml(p.HO_TEN)}</option>`;
-      }).join('');
-      document.getElementById('graveMemberSelect').innerHTML = opts;
-    });
-
-    showPage('graveyard-form');
-    setTimeout(initPickerMap, 300);
-  }
-
-  function initPickerMap(initLat, initLng) {
-    const container = document.getElementById('pickerMap');
-    if (!container) return;
-
-    if (pickerMapInstance) {
-      pickerMapInstance.remove();
-      pickerMapInstance = null;
-    }
-
-    const lat = initLat || 21.0285;
-    const lng = initLng || 105.8542;
-
-    pickerMapInstance = L.map('pickerMap').setView([lat, lng], initLat ? 15 : 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(pickerMapInstance);
-
-    if (initLat && initLng) {
-      pickerMarker = L.marker([lat, lng]).addTo(pickerMapInstance);
-    }
-
-    pickerMapInstance.on('click', function(e) {
-      const clickedLat = e.latlng.lat.toFixed(6);
-      const clickedLng = e.latlng.lng.toFixed(6);
-      
-      document.getElementById('graveLat').value = clickedLat;
-      document.getElementById('graveLng').value = clickedLng;
-
-      if (pickerMarker) {
-        pickerMarker.setLatLng(e.latlng);
-      } else {
-        pickerMarker = L.marker(e.latlng).addTo(pickerMapInstance);
-      }
-    });
-  }
-
   function getCurrentLocationGPS() {
-    if (!navigator.geolocation) {
-      alert('Trình duyệt của bạn không hỗ trợ định vị GPS.');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(function(position) {
-      const lat = position.coords.latitude.toFixed(6);
-      const lng = position.coords.longitude.toFixed(6);
-      
-      document.getElementById('graveLat').value = lat;
-      document.getElementById('graveLng').value = lng;
-
-      if (pickerMapInstance) {
-        pickerMapInstance.setView([lat, lng], 17);
-        if (pickerMarker) {
-          pickerMarker.setLatLng([lat, lng]);
-        } else {
-          pickerMarker = L.marker([lat, lng]).addTo(pickerMapInstance);
-        }
-      }
-      alert('Đã lấy tọa độ GPS hiện tại thành công!');
-    }, function(error) {
-      alert('Không thể lấy vị trí GPS: ' + error.message);
-    }, { enableHighAccuracy: true });
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('graveLat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('graveLng').value = pos.coords.longitude.toFixed(6);
+    });
   }
-
-  function saveGraveyardForm(event) {
-    event.preventDefault();
-    const form = document.getElementById('graveyardForm');
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-    const id = data.ID_PHANMO;
-    delete data.ID_PHANMO;
-
-    const btn = document.getElementById('saveGraveButton');
-    btn.disabled = true;
-    btn.textContent = 'Đang lưu...';
-
-    const action = id ? 'updatePhanMo' : 'createPhanMo';
-    const payload = id ? { id: id, data: data } : { data: data };
-
-    callApi(action, payload)
-      .then(res => {
-        btn.disabled = false;
-        btn.textContent = '💾 Lưu phần mộ';
-        if (!res || res.success === false) {
-          alert(res.message || 'Không thể lưu phần mộ.');
-          return;
-        }
-        alert('Đã lưu thông tin phần mộ thành công!');
-        showPage('graveyard');
-        loadGraveyardList();
-      })
-      .catch(err => {
-        btn.disabled = false;
-        btn.textContent = '💾 Lưu phần mộ';
-        alert('Lỗi: ' + errorMessage(err));
-      });
-  }
-
-  function editGraveyard(id) {
-    callApi('getPhanMoById', { id: id })
-      .then(res => {
-        if (!res || !res.success || !res.data) {
-          alert('Không tìm thấy thông tin phần mộ.');
-          return;
-        }
-        const item = res.data;
-        openNewGraveyardForm();
-        document.getElementById('graveFormTitle').textContent = 'Cập nhật thông tin phần mộ';
-        
-        setTimeout(() => {
-          const form = document.getElementById('graveyardForm');
-          form.elements.ID_PHANMO.value = item.ID_PHANMO || '';
-          form.elements.ID_THANHVIEN.value = item.ID_THANHVIEN || '';
-          form.elements.TEN_KHU_MO.value = item.TEN_KHU_MO || '';
-          form.elements.KHU_VUC.value = item.KHU_VUC || '';
-          form.elements.DIA_CHI.value = item.DIA_CHI || '';
-          form.elements.VI_TRI_MO.value = item.VI_TRI_MO || '';
-          form.elements.LATITUDE.value = item.LATITUDE || '';
-          form.elements.LONGITUDE.value = item.LONGITUDE || '';
-          form.elements.HINH_ANH.value = item.HINH_ANH || '';
-          form.elements.GHI_CHU.value = item.GHI_CHU || '';
-
-          if (item.LATITUDE && item.LONGITUDE) {
-            initPickerMap(parseFloat(item.LATITUDE), parseFloat(item.LONGITUDE));
-          }
-        }, 300);
-      })
-      .catch(err => alert('Lỗi: ' + errorMessage(err)));
-  }
-
-  function deleteGraveyard(id) {
-    if (!confirm('Bạn có chắc muốn chuyển phần mộ này sang trạng thái ngừng hoạt động?')) return;
-    callApi('deletePhanMo', { id: id })
-      .then(res => {
-        if (res && res.success === false) {
-          alert(res.message || 'Không thể thực hiện.');
-          return;
-        }
-        loadGraveyardList();
-      })
-      .catch(err => alert('Lỗi: ' + errorMessage(err)));
+  function saveGraveyardForm(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(document.getElementById('graveyardForm')).entries());
+    callApi('createPhanMo', {data: data}).then(() => { showPage('graveyard'); loadGraveyardList(); });
   }
 </script>
 </body>
