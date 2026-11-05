@@ -937,7 +937,16 @@ window.addEventListener('message', function (event) {
   if (!bridgeFrame) return;
 
   // Chi nhan thong diep tu iframe Bridge
-  if (event.origin !== new URL(BRIDGE_URL).origin) return;
+   const isGoogleBridge =
+  event.origin === 'https://script.google.com' ||
+  (
+    event.origin.startsWith('https://') &&
+    new URL(event.origin).hostname.endsWith(
+      '-script.googleusercontent.com'
+    )
+  );
+
+if (!isGoogleBridge) return;
 
   const msg = event.data;
 
