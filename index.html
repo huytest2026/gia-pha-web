@@ -879,178 +879,32 @@
   const API_URL = "https://script.google.com/macros/s/AKfycbxCVTQXO2RDLsv0p_GluZbFDi33AjCaSGxo83JSWtabc_aEDDjrgi-Lqv73P9ZgwGGPoA/exec";
 
   // Hàm gọi API chung (thay thế cho google.script.run)
-  
-/******************************************************
- * GIA PHA API BRIDGE
- * Ket noi GitHub Pages voi Google Apps Script
- * Thay the fetch(API_URL) de tranh loi CORS
- ******************************************************/
-
-const BRIDGE_URL =
-  'https://script.google.com/macros/s/AKfycbxCVTQXO2RDLsv0p_GluZbFDi33AjCaSGxo83JSWtabc_aEDDjrgi-Lqv73P9ZgwGGPoA/exec?bridge=1';
-
-const BRIDGE_TIMEOUT = 30000;
-
-let bridgeFrame = null;
-let bridgeReady = false;
-let bridgeQueue = [];
-let bridgePending = {};
-let bridgeRequestCounter = 0;
-
-/**
- * Khoi tao iframe Bridge
- */
-function initApiBridge() {
-  if (bridgeFrame) return;
-
-  bridgeFrame = document.createElement('iframe');
-
-  bridgeFrame.id = 'giaPhaApiBridge';
-  bridgeFrame.src = BRIDGE_URL;
-  bridgeFrame.style.display = 'none';
-
-  bridgeFrame.onload = function () {
-    bridgeReady = true;
-
-    console.log('Gia Pha API Bridge da san sang.');
-
-    // Gui cac yeu cau dang cho
-    const queue = bridgeQueue.splice(0);
-
-    queue.forEach(function (item) {
-      sendBridgeRequest(item);
+  function callApi(action, payload = {}) {
+    return fetch(API_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: action, ...payload })
+    })
+    .then(response => response.json())
+    .catch(error => {
+      console.error("API Error:", error);
+      throw error;
     });
-  };
-
-  bridgeFrame.onerror = function () {
-    console.error('Khong the tai Gia Pha API Bridge.');
-  };
-
-  document.body.appendChild(bridgeFrame);
-}
-
-/**
- * Lang nghe ket qua tra ve tu Bridge
- */
-window.addEventListener('message', function (event) {
-
-  if (!bridgeFrame) return;
-
-  // Chi nhan thong diep tu iframe Bridge
-  if (event.source !== bridgeFrame.contentWindow) return;
-
-  const msg = event.data;
-
-  if (!msg || msg.type !== 'GIA_PHA_API_RESPONSE') return;
-
-  const pending = bridgePending[msg.requestId];
-
-  if (!pending) return;
-
-  clearTimeout(pending.timeout);
-
-  delete bridgePending[msg.requestId];
-
-  if (msg.success) {
-    pending.resolve(msg.result);
-  } else {
-    pending.reject(new Error(msg.error || 'Loi API khong xac dinh.'));
-  }
-});
-
-/**
- * Gui yeu cau qua Bridge
- */
-function sendBridgeRequest(item) {
-
-  if (!bridgeReady || !bridgeFrame) {
-    bridgeQueue.push(item);
-    return;
   }
 
-  const requestId = item.requestId;
+  let currentDongHo = null;
+  let isSavingDongHo = false;
+  let isSavingMember = false;
+  let currentMember = null;
+  let memberFormMode = 'create';
+  let memberListCache = [];
+  let treeMemberCache = [];
+  let currentTreeData = null;
+  let currentTreeViewMode = 'list';
+  let currentTreeRootId = '';
 
-  const timeout = setTimeout(function () {
-
-    if (!bridgePending[requestId]) return;
-
-    delete bridgePending[requestId];
-
-    item.reject(
-      new Error('API timeout: Khong nhan duoc phan hoi sau 30 giay.')
-    );
-
-  }, BRIDGE_TIMEOUT);
-
-  bridgePending[requestId] = {
-    resolve: item.resolve,
-    reject: item.reject,
-    timeout: timeout
-  };
-
-  try {
-
-    bridgeFrame.contentWindow.postMessage({
-      type: 'GIA_PHA_API_REQUEST',
-      requestId: requestId,
-      payload: item.payload
-    }, '*');
-
-  } catch (error) {
-
-    clearTimeout(timeout);
-    delete bridgePending[requestId];
-
-    item.reject(error);
-  }
-}
-
-/**
- * Ham callApi moi
- * Giu nguyen cach goi cu:
- * callApi('getThanhVienList', {...})
- */
-function callApi(action, payload = {}) {
-
-  return new Promise(function (resolve, reject) {
-
-    const requestId =
-      'GP_' + Date.now() + '_' + (++bridgeRequestCounter);
-
-    const item = {
-      requestId: requestId,
-      payload: {
-        action: action,
-        ...payload
-      },
-      resolve: resolve,
-      reject: reject
-    };
-
-    sendBridgeRequest(item);
-
-  }).catch(function (error) {
-
-    console.error('API Bridge Error:', action, error);
-
-    throw error;
-
-  });
-}
-
-/**
- * Khoi dong Bridge sau khi DOM san sang
- */
-if (document.readyState === 'loading') {
-
-  document.addEventListener('DOMContentLoaded', initApiBridge);
-
-} else {
-
-  initApiBridge();
-
-}
-
+  const PAGE_IDS = ['overview', 'form', 'members', 'member-form', 'member-detail', 'tree', 'relations', 'anniversaries', 'phanmo'];
 
   function treePersonId(person) {
     if (!person) return '';
